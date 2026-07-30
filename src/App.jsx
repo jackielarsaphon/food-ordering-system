@@ -26,7 +26,6 @@ import {
   X,
 } from 'lucide-react'
 import {
-  countEmployees,
   countEmployeesByDepartment,
   createDeliveryPoint as createDeliveryPointOnSupabase,
   deleteAppUser,
@@ -1090,7 +1089,6 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
   const [newTeamName, setNewTeamName] = useState('')
   const [addTeamError, setAddTeamError] = useState('')
   const [submissionReceipt, setSubmissionReceipt] = useState(null)
-  const [headcount, setHeadcount] = useState({ loading: true, count: null, date: '', error: '' })
   const [submittingOrder, setSubmittingOrder] = useState(false)
   const [submittingTeamId, setSubmittingTeamId] = useState('')
   const [visibleMeals, setVisibleMeals] = useState(loadVisibleMeals)
@@ -1107,44 +1105,6 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
       return next
     })
   }
-
-  const loadDepartmentHeadcount = async () => {
-    setHeadcount((current) => ({ ...current, loading: true, error: '' }))
-
-    // Supabase ก่อน (ข้อมูล sync จากชีต dataforscan1 อัตโนมัติอยู่แล้ว)
-    if (supabaseConfigured()) {
-      try {
-        const count = await countEmployees({ location: locationOfProject(selectedProject), department })
-        setHeadcount({ loading: false, count, date: bangkokToday(), error: '' })
-        return
-      } catch {
-        // Supabase ใช้ไม่ได้ -> ถอยไปทาง Apps Script ข้างล่าง
-      }
-    }
-
-    try {
-      const payload = await getFromScript('getDepartmentHeadcount', {
-        projectId: selectedProject === 'sekong' ? 'xekong' : 'xepon',
-        department,
-      })
-      setHeadcount({ loading: false, count: Number(payload.count) || 0, date: payload.date || '', error: '' })
-    } catch (headcountError) {
-      try {
-        const fallback = await getFromScript('getDataForScan')
-        const uniqueLids = new Set((fallback.rows || [])
-          .filter((row) => locationMatchesProject(row[7], selectedProject) && normalizeDepartmentName(row[6]) === department)
-          .map((row) => String(row[1] ?? '').trim().toLowerCase())
-          .filter(Boolean))
-        setHeadcount({ loading: false, count: uniqueLids.size, date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }), error: '' })
-      } catch (fallbackError) {
-        setHeadcount({ loading: false, count: null, date: '', error: fallbackError.message || headcountError.message })
-      }
-    }
-  }
-
-  useEffect(() => {
-    loadDepartmentHeadcount()
-  }, [department, selectedProject])
 
   useEffect(() => {
     let active = true
@@ -1425,21 +1385,6 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
         <StatCard label="มื้อดึก" value={totals.lateNight.total} tone="lateNight" icon={UtensilsCrossed} />
         <StatCard label="มื้อไม่ปกติ" value={totals.irregular.total} tone="irregular" icon={UtensilsCrossed} />
         <StatCard label="รวมทั้งหมด" value={totals.grand} tone="grand" icon={CheckCircle2} />
-      </section>
-
-      <section className="department-headcount-card" aria-label="จำนวนพนักงานในแผนกวันนี้">
-        <div className="department-headcount-icon"><UsersRound size={25} /></div>
-        <div className="department-headcount-copy">
-          <span>จำนวนพนักงานใน DataForScan วันนี้</span>
-          <strong>{department} · {projects[selectedProject].name}</strong>
-          {headcount.error && <small className="headcount-error">ดึงข้อมูลไม่สำเร็จ: {headcount.error}</small>}
-          {!headcount.error && <small>{headcount.date ? formatDate(headcount.date) : 'กำลังตรวจสอบข้อมูลล่าสุด'}</small>}
-        </div>
-        <div className="department-headcount-value">
-          <strong>{headcount.loading ? '…' : (headcount.count ?? '—').toLocaleString('th-TH')}</strong>
-          <span>คน</span>
-        </div>
-        <button type="button" disabled={headcount.loading} onClick={loadDepartmentHeadcount} title="อัปเดตจำนวนพนักงาน"><RotateCcw size={18} /></button>
       </section>
 
       <section className="workspace-card">

@@ -97,20 +97,6 @@ main { width: min(1800px, calc(100% - 32px)); margin: -18px auto 50px; position:
 .stat-card.grand { color: white; background: #2e241f; border-color: #2e241f; }
 .stat-card.grand span, .stat-card.grand small { color: #d6cac1; }
 .stat-card.grand .stat-icon { background: rgba(255,255,255,.1); color: #ffa15f; }
-.department-headcount-card { min-height: 94px; margin: -1px 0 18px; padding: 16px 18px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 14px; color: #164f4b; background: linear-gradient(105deg, #e6f6f3, #f4fbfa); border: 1px solid #acd9d2; border-radius: 18px; box-shadow: 0 8px 24px rgba(31,107,98,.07); }
-.department-headcount-icon { width: 52px; height: 52px; display: grid; place-items: center; color: white; background: #1c8c82; border-radius: 15px; box-shadow: 0 8px 18px rgba(28,140,130,.2); }
-.department-headcount-copy { min-width: 0; display: grid; gap: 2px; }
-.department-headcount-copy > span { color: #44807a; font-size: 11px; font-weight: 750; }
-.department-headcount-copy > strong { overflow: hidden; color: #194e4a; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; }
-.department-headcount-copy > small { color: #72928e; font-size: 10px; }
-.department-headcount-copy > .headcount-error { color: #ad2d20; }
-.department-headcount-value { min-width: 105px; display: flex; align-items: baseline; justify-content: flex-end; gap: 5px; }
-.department-headcount-value strong { color: #126f67; font-size: 35px; line-height: 1; }
-.department-headcount-value span { color: #54827d; font-size: 12px; font-weight: 750; }
-.department-headcount-card > button { width: 42px; height: 42px; display: grid; place-items: center; color: #187a72; background: white; border: 1px solid #b7ddd7; border-radius: 12px; }
-.department-headcount-card > button:hover { color: white; background: #1c8c82; border-color: #1c8c82; }
-.department-headcount-card > button:disabled { opacity: .55; cursor: wait; }
-
 .workspace-card { padding: clamp(18px, 2.5vw, 30px); background: white; border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 10px 35px rgba(83,44,18,.05); }
 .workspace-heading { display: flex; justify-content: space-between; gap: 20px; align-items: center; min-width: 0; }
 .workspace-heading p { color: var(--orange); }
@@ -633,12 +619,6 @@ th.sticky-col { z-index: 4; }
   .logout-button span { display: none; }
   main { width: calc(100% - 20px); margin-top: -20px; }
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .department-headcount-card { padding: 14px; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; }
-  .department-headcount-icon { width: 46px; height: 46px; }
-  .department-headcount-copy > strong { font-size: 14px; }
-  .department-headcount-value { min-width: 67px; }
-  .department-headcount-value strong { font-size: 29px; }
-  .department-headcount-card > button { grid-column: 1 / -1; width: 100%; height: 37px; }
   .stat-card { min-height: 92px; padding: 13px; gap: 10px; }
   .stat-icon { width: 39px; height: 39px; }
   .stat-card strong { font-size: 23px; }
