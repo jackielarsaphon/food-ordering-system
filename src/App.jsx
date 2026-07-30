@@ -1707,19 +1707,121 @@ function OrderTable({ rows, visibleMeals, deliveryPoints, updateRow, updateMeal,
 }
 
 /**
- * ค่าคุมการพิมพ์ยอดสรุปข้าว — ต้องจบใน A3 แนวนอน 2 หน้าเสมอ
+ * ค่าคุมการพิมพ์ยอดสรุปข้าว A3 แนวนอน
  *
- * PRINT_ROWS_PER_PAGE  แถวที่ A3 1 หน้ารับไหวที่ขนาดตัวอักษรปกติ
- *                      วัดจริงด้วยการสั่งพิมพ์เป็น PDF: 36 แถว = 1 หน้า, 40 แถว = 2 หน้า
- *                      (แถวสูง 17px + หัวตาราง 2 ชั้น + หัวข้อ ในพื้นที่ 297mm - ขอบ 12mm)
- * PRINT_FOOTER_ROWS    แถว "รวมทุกแผนก" ท้ายตารางสูงกว่าแถวปกติ นับเผื่อไว้
- * PRINT_MIN_SCALE      ย่อได้มากสุดเท่านี้ ต่ำกว่านี้ตัวหนังสือเล็กจนอ่านไม่ออก
- *                      พอสำหรับ ~165 แถว (ประมาณ 2 เท่าของทีมงานที่มีอยู่ตอนนี้)
- *                      ถ้ามากกว่านั้นจะล้นไปหน้า 3 — ยอมล้นดีกว่าพิมพ์แล้วอ่านไม่ออก
+ * ไม่เกิน PRINT_ROWS_PER_PAGE จะใช้หน้าเดียว ถ้ามากกว่านั้นจะแบ่งเป็น 2 หน้าจริง
+ * และคำนวณความสูงแถวจากพื้นที่แนวตั้งที่มี ทำให้ตารางเต็มกระดาษโดยไม่ต้อง zoom
+ * ทั้งหน้าจนตัวหนังสือและตารางไปกองอยู่ด้านบนเหมือนระบบเดิม
  */
-const PRINT_ROWS_PER_PAGE = 36
+const PRINT_ROWS_PER_PAGE = 54
 const PRINT_FOOTER_ROWS = 2
-const PRINT_MIN_SCALE = 0.35
+const PRINT_BODY_HEIGHT_MM = 238
+const PRINT_MAX_ROW_HEIGHT_MM = 10
+
+function KitchenSummaryTable({ items, totals, submittedRows, showGrandTotal = true }) {
+  return (
+    <table className="summary-table">
+      <thead>
+        <tr>
+          <th rowSpan="2" className="summary-department">แผนก</th>
+          <th rowSpan="2" className="summary-units">หน่วยงาน / ทีมงาน</th>
+          <th rowSpan="2" className="summary-status-head">สถานะ / วันที่ส่ง / ผู้บันทึก</th>
+          {Object.entries(periodLabels).map(([period, label]) => <th key={period} colSpan="6" className={`meal-head ${period}-head`}>{label}</th>)}
+          <th rowSpan="2" className="grand-head">รวมทั้งหมด</th>
+          <th rowSpan="2" className="summary-note-head">หมายเหตุ</th>
+        </tr>
+        <tr>
+          {MEAL_PERIODS.flatMap((period) => [
+            <th key={`${period}-canteen`} className={`summary-subhead group-start ${period}`}>โรงครัว</th>,
+            <th key={`${period}-sticky`} className="summary-subhead packed">ข้าวเหนียว</th>,
+            <th key={`${period}-rice`} className="summary-subhead packed">ข้าวจ้าว</th>,
+            <th key={`${period}-pack-total`} className="summary-subhead pack-total">รวมห่อข้าว</th>,
+            <th key={`${period}-point`} className="summary-subhead delivery-subhead">ส่งห่อที่</th>,
+            <th key={`${period}-total`} className="summary-subhead total">รวมมื้อ</th>,
+          ])}
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((item) => {
+          const showSubtotal = item.printSubtotal !== false
+          const subtotalRows = item.printAllTeamRows || item.teamRows
+          const departmentRowSpan = item.teamRows.length + (showSubtotal ? 1 : 0)
+          const departmentLabel = item.printContinued ? `${item.department} (ต่อ)` : item.department
+          return (
+            <Fragment key={`${item.department}-${item.printPart || 'all'}`}>
+              {item.teamRows.map((teamRow, index) => (
+                <tr key={teamRow.id} className="team-summary-row">
+                  {index === 0 && (
+                    <td className="summary-department-cell" rowSpan={departmentRowSpan}>
+                      <Building2 size={17} />
+                      <div><strong>{departmentLabel}</strong><small>{item.teams} ทีมงาน</small></div>
+                    </td>
+                  )}
+                  <td className="summary-unit-name">{teamRow.team}</td>
+                  <td>
+                    <div className="submission-info">
+                      <span className={`submission-status ${teamRow.status === 'sent' ? 'complete' : teamRow.status === 'confirmed' ? 'partial' : ''}`}>{statusText[teamRow.status]}</span>
+                      {teamRow.submittedAt && <small className="submission-time">{formatSubmittedAt(teamRow.submittedAt)}</small>}
+                      {teamRow.submittedByLid && <small className="submission-user"><strong>LID {teamRow.submittedByLid}</strong>{teamRow.submittedByName ? ` · ${teamRow.submittedByName}` : ''}</small>}
+                    </div>
+                  </td>
+                  {MEAL_PERIODS.flatMap((period) => [
+                    <td key={`${period}-canteen`} className={`group-start ${period}`}>{number(teamRow[period].canteen)}</td>,
+                    <td key={`${period}-sticky`} className="summary-packed">{number(teamRow[period].sticky)}</td>,
+                    <td key={`${period}-rice`} className="summary-packed">{number(teamRow[period].rice)}</td>,
+                    <td key={`${period}-pack-total`} className="summary-pack-total">{packed(teamRow[period])}</td>,
+                    <td key={`${period}-point`} className={`summary-delivery ${packed(teamRow[period]) && teamRow[period].point ? '' : 'empty'}`}>{packed(teamRow[period]) ? (teamRow[period].point || 'ยังไม่ระบุ') : '—'}</td>,
+                    <td key={`${period}-total`} className={`summary-meal-total ${period}`}>{mealTotal(teamRow[period])}</td>,
+                  ])}
+                  <td className="summary-grand-total">{rowTotal(teamRow).toLocaleString('th-TH')}</td>
+                  <td className={`summary-note ${teamRow.note ? '' : 'empty'}`}>{teamRow.note || '—'}</td>
+                </tr>
+              ))}
+              {showSubtotal && (
+                <tr className="department-subtotal-row">
+                  {!item.teamRows.length && (
+                    <td className="summary-department-cell">
+                      <div><strong>{departmentLabel}</strong><small>{item.teams} ทีมงาน</small></div>
+                    </td>
+                  )}
+                  <td><strong>รวม {item.department}</strong></td>
+                  <td><span className={`submission-status ${item.sent === item.teams ? 'complete' : item.sent ? 'partial' : ''}`}>{item.sent}/{item.teams} ส่งแล้ว</span></td>
+                  {MEAL_PERIODS.flatMap((period) => [
+                    <td key={`${period}-canteen`} className={`subtotal-value group-start ${period}`}>{item.totals[period].canteen}</td>,
+                    <td key={`${period}-sticky`} className={`subtotal-value ${period} packed`}>{item.totals[period].sticky}</td>,
+                    <td key={`${period}-rice`} className={`subtotal-value ${period} packed`}>{item.totals[period].rice}</td>,
+                    <td key={`${period}-pack-total`} className="subtotal-pack-total">{item.totals[period].sticky + item.totals[period].rice}</td>,
+                    <td key={`${period}-point`} className="subtotal-note">{new Set(subtotalRows.filter((row) => packed(row[period])).map((row) => row[period].point).filter(Boolean)).size} จุด</td>,
+                    <td key={`${period}-total`} className={`subtotal-meal-total ${period}`}>{item.totals[period].total}</td>,
+                  ])}
+                  <td className="subtotal-grand">{item.totals.grand.toLocaleString('th-TH')}</td>
+                  <td className="subtotal-note">รวม {subtotalRows.filter((row) => row.note).length} หมายเหตุ</td>
+                </tr>
+              )}
+            </Fragment>
+          )
+        })}
+      </tbody>
+      {showGrandTotal && (
+        <tfoot>
+          <tr>
+            <td colSpan="3"><strong>รวมทุกแผนก</strong></td>
+            {MEAL_PERIODS.flatMap((period) => [
+              <td key={`${period}-canteen`} className={`group-start ${period}`}>{totals[period].canteen}</td>,
+              <td key={`${period}-sticky`}>{totals[period].sticky}</td>,
+              <td key={`${period}-rice`}>{totals[period].rice}</td>,
+              <td key={`${period}-pack-total`} className="footer-pack-total">{totals[period].sticky + totals[period].rice}</td>,
+              <td key={`${period}-point`}>{new Set(submittedRows.filter((row) => packed(row[period])).map((row) => row[period].point).filter(Boolean)).size} จุด</td>,
+              <td key={`${period}-total`} className={`footer-meal-total ${period}`}>{totals[period].total}</td>,
+            ])}
+            <td>{totals.grand.toLocaleString('th-TH')}</td>
+            <td>{submittedRows.filter((row) => row.note).length.toLocaleString('th-TH')} หมายเหตุ</td>
+          </tr>
+        </tfoot>
+      )}
+    </table>
+  )
+}
 
 function KitchenDashboard({
   selectedDate,
@@ -1781,45 +1883,58 @@ function KitchenDashboard({
     }
   }).filter((item) => !query.trim() || item.department.toLowerCase().includes(query.trim().toLowerCase())), [dayRows, query])
   /**
-   * แผนหน้าพิมพ์ — บังคับให้ยอดสรุปข้าวจบใน A3 2 หน้าเสมอ
-   *
-   * 1) หาแผนกที่ตัดขึ้นหน้า 2 แล้วสองหน้าแถวใกล้เคียงกันที่สุด (ไม่ตัดกลางแผนก)
-   * 2) ถ้าหน้าที่แถวเยอะกว่ายังล้นอยู่ ย่อทั้งตารางลงตามสัดส่วนให้พอดี 1 หน้า
-   *    ผลคือยาวแค่ไหนก็ยังได้ 2 หน้า แค่ตัวหนังสือเล็กลง
+   * แผนหน้าพิมพ์ A3 — สร้างตารางแยกเป็นหน้าจริงเพื่อให้จุดตัดหน้าแน่นอน
+   * และปรับความสูงแถวของแต่ละหน้าตามจำนวนข้อมูลในหน้านั้น
    */
   const printLayout = useMemo(() => {
-    const weightedRows = summaries.map((item) => ({ department: item.department, rows: item.teamRows.length + 1 }))
-    const bodyRows = weightedRows.reduce((sum, item) => sum + item.rows, 0)
-    // สั้นพอ -> หน้าเดียวเหมือนเดิม ไม่ต้องตัดไม่ต้องย่อ
-    if (bodyRows <= PRINT_ROWS_PER_PAGE) return { pageTwoDepartment: null, scale: 1 }
+    const bodyRows = summaries.reduce((sum, item) => sum + item.teamRows.length + 1, 0)
     const totalRows = bodyRows + PRINT_FOOTER_ROWS
+    let pageItems = [summaries]
 
-    let pageTwoDepartment = null
-    // แผนกเดียวยาวๆ ตัดตามขอบแผนกไม่ได้ ปล่อยให้เบราว์เซอร์ตัดเอง แต่ต้องจบใน 2 หน้า
-    let biggestPageRows = Math.ceil(totalRows / 2)
-
-    if (weightedRows.length > 1) {
-      const target = totalRows / 2
-      let cumulative = 0
-      let splitIndex = 1
+    if (totalRows > PRINT_ROWS_PER_PAGE && summaries.length > 1) {
+      let bestSplitIndex = 1
       let smallestDifference = Number.POSITIVE_INFINITY
-      for (let index = 0; index < weightedRows.length - 1; index += 1) {
-        cumulative += weightedRows[index].rows
-        const difference = Math.abs(target - cumulative)
+      for (let index = 1; index < summaries.length; index += 1) {
+        const firstPageRows = summaries.slice(0, index).reduce((sum, item) => sum + item.teamRows.length + 1, 0)
+        const secondPageRows = bodyRows - firstPageRows + PRINT_FOOTER_ROWS
+        const difference = Math.abs(firstPageRows - secondPageRows)
         if (difference < smallestDifference) {
           smallestDifference = difference
-          splitIndex = index + 1
+          bestSplitIndex = index
         }
       }
-      const firstPageRows = weightedRows.slice(0, splitIndex).reduce((sum, item) => sum + item.rows, 0)
-      pageTwoDepartment = weightedRows[splitIndex]?.department || null
-      biggestPageRows = Math.max(firstPageRows, totalRows - firstPageRows)
+      pageItems = [summaries.slice(0, bestSplitIndex), summaries.slice(bestSplitIndex)]
+    } else if (totalRows > PRINT_ROWS_PER_PAGE && summaries.length === 1 && summaries[0].teamRows.length > 1) {
+      const item = summaries[0]
+      const splitAt = Math.min(item.teamRows.length - 1, Math.max(1, Math.ceil((item.teamRows.length + PRINT_FOOTER_ROWS + 1) / 2)))
+      pageItems = [
+        [{
+          ...item,
+          teamRows: item.teamRows.slice(0, splitAt),
+          printSubtotal: false,
+          printPart: 1,
+        }],
+        [{
+          ...item,
+          teamRows: item.teamRows.slice(splitAt),
+          printAllTeamRows: item.teamRows,
+          printContinued: true,
+          printPart: 2,
+        }],
+      ]
     }
 
-    const scale = biggestPageRows > PRINT_ROWS_PER_PAGE
-      ? Math.max(PRINT_MIN_SCALE, Math.floor((PRINT_ROWS_PER_PAGE / biggestPageRows) * 1000) / 1000)
-      : 1
-    return { pageTwoDepartment, scale }
+    const pages = pageItems.map((items, index) => {
+      const isLastPage = index === pageItems.length - 1
+      const rowCount = items.reduce((sum, item) => sum + item.teamRows.length + (item.printSubtotal === false ? 0 : 1), 0)
+        + (isLastPage ? PRINT_FOOTER_ROWS : 0)
+      const rowHeight = Math.floor(Math.min(PRINT_MAX_ROW_HEIGHT_MM, PRINT_BODY_HEIGHT_MM / Math.max(rowCount, 1)) * 100) / 100
+      const fontSize = Math.floor(Math.min(6.5, Math.max(2.8, rowHeight * 1.25)) * 100) / 100
+      const headerHeight = Math.floor(Math.min(8, Math.max(4, rowHeight)) * 100) / 100
+      return { items, rowCount, rowHeight, fontSize, headerHeight, showGrandTotal: isLastPage }
+    })
+
+    return { pages }
   }, [summaries])
 
   const loadProjectHeadcount = async () => {
@@ -2376,7 +2491,7 @@ function KitchenDashboard({
         <article className="packed-summary-total"><span>รวมข้าวห่อ</span><strong>{totalPackedRice.toLocaleString('th-TH')}</strong><small>ห่อ</small></article>
       </section>
 
-      <section className="workspace-card admin-workspace" style={{ '--print-scale': printLayout.scale }}>
+      <section className="workspace-card admin-workspace">
         <div className="workspace-heading">
           <div>
             <p>KITCHEN ORDER SUMMARY · {projects[selectedProject].shortName}</p>
@@ -2400,96 +2515,39 @@ function KitchenDashboard({
           <div className="last-update"><CheckCircle2 size={17} /><span>รับยอดแล้ว {submittedDayRows.length.toLocaleString('th-TH')}/{dayRows.length.toLocaleString('th-TH')} ทีม จาก {departments.length} แผนก</span></div>
         </div>
 
-        <div className="admin-table-scroll">
-          <table className="summary-table">
-            <thead>
-              <tr>
-                <th rowSpan="2" className="summary-department">แผนก</th>
-                <th rowSpan="2" className="summary-units">หน่วยงาน / ทีมงาน</th>
-                <th rowSpan="2" className="summary-status-head">สถานะ / วันที่ส่ง / ผู้บันทึก</th>
-                {Object.entries(periodLabels).map(([period, label]) => <th key={period} colSpan="6" className={`meal-head ${period}-head`}>{label}</th>)}
-                <th rowSpan="2" className="grand-head">รวมทั้งหมด</th>
-                <th rowSpan="2" className="summary-note-head">หมายเหตุ</th>
-              </tr>
-              <tr>
-                {MEAL_PERIODS.flatMap((period) => [
-                  <th key={`${period}-canteen`} className={`summary-subhead group-start ${period}`}>โรงครัว</th>,
-                  <th key={`${period}-sticky`} className="summary-subhead packed">ข้าวเหนียว</th>,
-                  <th key={`${period}-rice`} className="summary-subhead packed">ข้าวจ้าว</th>,
-                  <th key={`${period}-pack-total`} className="summary-subhead pack-total">รวมห่อข้าว</th>,
-                  <th key={`${period}-point`} className="summary-subhead delivery-subhead">ส่งห่อที่</th>,
-                  <th key={`${period}-total`} className="summary-subhead total">รวมมื้อ</th>,
-                ])}
-              </tr>
-            </thead>
-            <tbody>
-              {summaries.map((item) => {
-                // แผนกที่ถูกเลือกให้ขึ้นหน้า 2 — แผนกที่ไม่มีทีมงานเลยต้องไปติดที่แถวรวมแทน
-                const startsPageTwo = item.department === printLayout.pageTwoDepartment
-                return (
-                <Fragment key={item.department}>
-                  {item.teamRows.map((teamRow, index) => (
-                    <tr key={teamRow.id} className={`team-summary-row ${index === 0 && startsPageTwo ? 'print-page-two-start' : ''}`}>
-                      {index === 0 && (
-                        <td className="summary-department-cell" rowSpan={item.teamRows.length + 1}>
-                          <Building2 size={17} />
-                          <div><strong>{item.department}</strong><small>{item.teams} ทีมงาน</small></div>
-                        </td>
-                      )}
-                      <td className="summary-unit-name">{teamRow.team}</td>
-                      <td>
-                        <div className="submission-info">
-                          <span className={`submission-status ${teamRow.status === 'sent' ? 'complete' : teamRow.status === 'confirmed' ? 'partial' : ''}`}>{statusText[teamRow.status]}</span>
-                          {teamRow.submittedAt && <small className="submission-time">{formatSubmittedAt(teamRow.submittedAt)}</small>}
-                          {teamRow.submittedByLid && <small className="submission-user"><strong>LID {teamRow.submittedByLid}</strong>{teamRow.submittedByName ? ` · ${teamRow.submittedByName}` : ''}</small>}
-                        </div>
-                      </td>
-                      {MEAL_PERIODS.flatMap((period) => [
-                        <td key={`${period}-canteen`} className={`group-start ${period}`}>{number(teamRow[period].canteen)}</td>,
-                        <td key={`${period}-sticky`} className="summary-packed">{number(teamRow[period].sticky)}</td>,
-                        <td key={`${period}-rice`} className="summary-packed">{number(teamRow[period].rice)}</td>,
-                        <td key={`${period}-pack-total`} className="summary-pack-total">{packed(teamRow[period])}</td>,
-                        <td key={`${period}-point`} className={`summary-delivery ${packed(teamRow[period]) && teamRow[period].point ? '' : 'empty'}`}>{packed(teamRow[period]) ? (teamRow[period].point || 'ยังไม่ระบุ') : '—'}</td>,
-                        <td key={`${period}-total`} className={`summary-meal-total ${period}`}>{mealTotal(teamRow[period])}</td>,
-                      ])}
-                      <td className="summary-grand-total">{rowTotal(teamRow).toLocaleString('th-TH')}</td>
-                      <td className={`summary-note ${teamRow.note ? '' : 'empty'}`}>{teamRow.note || '—'}</td>
-                    </tr>
-                  ))}
-                  <tr className={`department-subtotal-row ${startsPageTwo && !item.teamRows.length ? 'print-page-two-start' : ''}`}>
-                    <td><strong>รวม {item.department}</strong></td>
-                    <td><span className={`submission-status ${item.sent === item.teams ? 'complete' : item.sent ? 'partial' : ''}`}>{item.sent}/{item.teams} ส่งแล้ว</span></td>
-                    {MEAL_PERIODS.flatMap((period) => [
-                      <td key={`${period}-canteen`} className={`subtotal-value group-start ${period}`}>{item.totals[period].canteen}</td>,
-                      <td key={`${period}-sticky`} className={`subtotal-value ${period} packed`}>{item.totals[period].sticky}</td>,
-                      <td key={`${period}-rice`} className={`subtotal-value ${period} packed`}>{item.totals[period].rice}</td>,
-                      <td key={`${period}-pack-total`} className="subtotal-pack-total">{item.totals[period].sticky + item.totals[period].rice}</td>,
-                      <td key={`${period}-point`} className="subtotal-note">{new Set(item.teamRows.filter((row) => packed(row[period])).map((row) => row[period].point).filter(Boolean)).size} จุด</td>,
-                      <td key={`${period}-total`} className={`subtotal-meal-total ${period}`}>{item.totals[period].total}</td>,
-                    ])}
-                    <td className="subtotal-grand">{item.totals.grand.toLocaleString('th-TH')}</td>
-                    <td className="subtotal-note">รวม {item.teamRows.filter((row) => row.note).length} หมายเหตุ</td>
-                  </tr>
-                </Fragment>
-                )
-              })}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan="3"><strong>รวมทุกแผนก</strong></td>
-                {MEAL_PERIODS.flatMap((period) => [
-                  <td key={`${period}-canteen`} className={`group-start ${period}`}>{totals[period].canteen}</td>,
-                  <td key={`${period}-sticky`}>{totals[period].sticky}</td>,
-                  <td key={`${period}-rice`}>{totals[period].rice}</td>,
-                  <td key={`${period}-pack-total`} className="footer-pack-total">{totals[period].sticky + totals[period].rice}</td>,
-                  <td key={`${period}-point`}>{new Set(submittedDayRows.filter((row) => packed(row[period])).map((row) => row[period].point).filter(Boolean)).size} จุด</td>,
-                  <td key={`${period}-total`} className={`footer-meal-total ${period}`}>{totals[period].total}</td>,
-                ])}
-                <td>{totals.grand.toLocaleString('th-TH')}</td>
-                <td>{submittedDayRows.filter((row) => row.note).length.toLocaleString('th-TH')} หมายเหตุ</td>
-              </tr>
-            </tfoot>
-          </table>
+        <div className="admin-table-scroll summary-screen-table">
+          <KitchenSummaryTable items={summaries} totals={totals} submittedRows={submittedDayRows} />
+        </div>
+
+        <div className="summary-print-pages" aria-hidden="true">
+          {printLayout.pages.map((page, index) => (
+            <section
+              key={`print-page-${index + 1}`}
+              className="summary-print-page"
+              style={{
+                '--print-row-height': `${page.rowHeight}mm`,
+                '--print-font-size': `${page.fontSize}pt`,
+                '--print-header-height': `${page.headerHeight}mm`,
+              }}
+            >
+              <header className="summary-print-header">
+                <div>
+                  <p>KITCHEN ORDER SUMMARY · {projects[selectedProject].shortName}</p>
+                  <h2>ยอดสรุปข้าวทุกแผนก — {projects[selectedProject].name}</h2>
+                </div>
+                <div>
+                  <strong>วันที่รับอาหาร {formatDate(selectedDate)}</strong>
+                  <span>หน้า {index + 1}/{printLayout.pages.length}</span>
+                </div>
+              </header>
+              <KitchenSummaryTable
+                items={page.items}
+                totals={totals}
+                submittedRows={submittedDayRows}
+                showGrandTotal={page.showGrandTotal}
+              />
+            </section>
+          ))}
         </div>
       </section>
     </main>

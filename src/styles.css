@@ -319,6 +319,7 @@ th.sticky-col { z-index: 4; }
 .last-update { height: 42px; padding: 0 13px; display: flex; align-items: center; gap: 7px; color: #157269; background: #e9f6f3; border-radius: 11px; font-size: 12px; font-weight: 700; }
 .admin-workspace { padding: clamp(12px, 1.35vw, 22px); }
 .admin-table-scroll { width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+.summary-print-pages { display: none; }
 .summary-table { width: 100%; min-width: 3040px; table-layout: fixed; }
 .summary-table th { padding: 9px 3px; text-align: center; overflow-wrap: anywhere; font-size: 12px; line-height: 1.15; }
 .summary-table td { height: 58px; min-width: 0; padding-left: 3px; padding-right: 3px; overflow: hidden; font-size: 13.5px; font-weight: 700; }
@@ -830,36 +831,40 @@ th.sticky-col { z-index: 4; }
   .rice-summary-grid strong { font-size: 13pt; }
   .rice-summary-grid small { font-size: 6pt; }
   .admin-table-scroll { overflow: visible; }
-  /*
-   * --print-scale มาจาก App.jsx (printLayout) = อัตราย่อที่ทำให้หน้าที่แถวเยอะสุด
-   * พอดี A3 1 หน้า รวมกับ .print-page-two-start ที่บังคับตัดหน้าตรงกลาง
-   * ยอดสรุปข้าวจึงจบใน 2 หน้าเสมอ ไม่ว่ามีกี่แผนก/กี่ทีม
-   */
-  .admin-workspace { zoom: var(--print-scale, 1); }
+  .admin-workspace > .workspace-heading, .summary-screen-table { display: none !important; }
+  .summary-print-pages { display: block !important; }
+  .summary-print-page { width: 100%; break-after: page; page-break-after: always; }
+  .summary-print-page:last-child { break-after: auto; page-break-after: auto; }
+  .summary-print-header {
+    min-height: 12mm; margin-bottom: 2mm; display: flex; align-items: end; justify-content: space-between; gap: 8mm;
+    color: #3b2b22; border-bottom: .5mm solid #c84a00;
+  }
+  .summary-print-header p { margin: 0 0 .8mm; color: #a84b18; font-size: 5.5pt; font-weight: 850; letter-spacing: .08em; }
+  .summary-print-header h2 { margin: 0 0 1.5mm; font-size: 12pt; line-height: 1.1; }
+  .summary-print-header > div:last-child { margin-bottom: 1.5mm; display: grid; justify-items: end; gap: .5mm; white-space: nowrap; }
+  .summary-print-header strong { font-size: 7pt; }
+  .summary-print-header span { color: #78685e; font-size: 5.5pt; }
   .summary-table { width: 100%; min-width: 0; table-layout: fixed; }
   .summary-table thead { display: table-header-group; }
   .summary-table tfoot { display: table-row-group; }
   .summary-table tr { break-inside: avoid; page-break-inside: avoid; }
-  .summary-table tr.print-page-two-start { break-before: page; page-break-before: always; }
-  /* กันแถวอื่นแอบดันหน้าที่ 3 — มีจุดตัดได้จุดเดียวคือจุดที่คำนวณไว้ */
-  .summary-table tbody tr:not(.print-page-two-start) { break-before: auto; page-break-before: auto; }
-  .summary-table th { height: 18px; padding: 1px 2px; font-size: 6.2pt !important; line-height: 1; white-space: normal; }
-  .summary-table td { height: 17px; min-width: 0 !important; padding: 1px 2px; font-size: 6pt !important; line-height: 1; }
+  .summary-table th { height: var(--print-header-height, 5mm); padding: .4mm .5mm; font-size: var(--print-font-size, 6pt) !important; line-height: 1; white-space: normal; }
+  .summary-table td { height: var(--print-row-height, 5mm); min-width: 0 !important; padding: .3mm .5mm; font-size: var(--print-font-size, 6pt) !important; line-height: 1; }
   .summary-department, .summary-department-cell { width: 8%; min-width: 0 !important; }
   .summary-units, .summary-unit-name { width: 11%; min-width: 0 !important; }
   .summary-status-head { width: 8%; }
   .summary-note-head, .summary-note { width: 20%; min-width: 0 !important; max-width: none; }
   .summary-department-cell { padding: 2px 3px; }
   .summary-department-cell svg { display: none; }
-  .summary-department-cell strong { font-size: 6.5pt; }
-  .summary-department-cell small, .submission-info small { font-size: 5pt; }
+  .summary-department-cell strong { font-size: var(--print-font-size, 6pt); }
+  .summary-department-cell small, .submission-info small { font-size: max(2.6pt, calc(var(--print-font-size, 6pt) - 1pt)); }
   .summary-unit-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .summary-note { height: auto; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; word-break: break-word; white-space: normal; font-size: 5.5pt !important; line-height: 1.1; }
+  .summary-note { height: var(--print-row-height, 5mm); overflow: hidden; text-overflow: clip; overflow-wrap: anywhere; word-break: break-word; white-space: normal; font-size: var(--print-font-size, 6pt) !important; line-height: 1; }
   .submission-info { min-width: 0; gap: 0; line-height: 1; }
   .submission-time { display: none !important; }
   .submission-user { max-width: 100% !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .submission-status { padding: 1px 2px; font-size: 5.2pt; line-height: 1; }
-  .summary-meal-total, .summary-grand-total, .department-subtotal-row td, .summary-table tfoot td { font-size: 6.4pt !important; }
+  .submission-status { padding: .2mm .5mm; font-size: max(2.6pt, calc(var(--print-font-size, 6pt) - .6pt)); line-height: 1; }
+  .summary-meal-total, .summary-grand-total, .department-subtotal-row td, .summary-table tfoot td { font-size: var(--print-font-size, 6pt) !important; }
   .summary-table .morning-head, .morning-head { color: white !important; background: #ed5b00 !important; }
   .summary-table .lunch-head, .lunch-head { color: white !important; background: #e7a400 !important; }
   .summary-table .dinner-head, .dinner-head { color: white !important; background: #168b82 !important; }
@@ -874,7 +879,7 @@ th.sticky-col { z-index: 4; }
   .summary-meal-total.lateNight, .lateNight-calc { color: white !important; background: #7663c4 !important; }
   .summary-meal-total.irregular, .irregular-calc { color: white !important; background: #b84b75 !important; }
   .summary-grand-total, .row-total { color: #6f2000 !important; background: #efcff8 !important; font-weight: 900 !important; }
-  .department-subtotal-row td { height: 17px; border-top-width: 1px; }
+  .department-subtotal-row td { height: var(--print-row-height, 5mm); border-top-width: 1px; }
   .department-subtotal-row td { background: #f8e0cc !important; }
   .department-subtotal-row .subtotal-value.morning { background: #fff0e5 !important; }
   .department-subtotal-row .subtotal-value.lunch { background: #fff4c2 !important; }
@@ -888,5 +893,5 @@ th.sticky-col { z-index: 4; }
   .department-subtotal-row .subtotal-meal-total.lateNight { color: white !important; background: #5946a8 !important; }
   .department-subtotal-row .subtotal-meal-total.irregular { color: white !important; background: #963457 !important; }
   .department-subtotal-row .subtotal-grand { color: #6f2000 !important; background: #e8bdf3 !important; }
-  .summary-table tfoot td { height: 19px; color: white !important; background: #2f241f !important; }
+  .summary-table tfoot td { height: var(--print-row-height, 5mm); color: white !important; background: #2f241f !important; }
 }
