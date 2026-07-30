@@ -395,6 +395,15 @@ const formatCalculatedNumber = (value) => Number(value).toLocaleString('th-TH', 
 const packed = (meal) => number(meal.sticky) + number(meal.rice)
 const mealTotal = (meal) => number(meal.canteen) + packed(meal)
 const rowTotal = (row) => MEAL_PERIODS.reduce((total, period) => total + mealTotal(row[period] || emptyMeal()), 0)
+const orderPayloadForRow = (row) => ({
+  team: row.team,
+  // จุดส่งมีความหมายเฉพาะมื้อที่มีข้าวห่อ มื้อที่ทานที่โรงครัวล้วนส่งค่าว่าง
+  ...Object.fromEntries(MEAL_PERIODS.map((period) => [period, {
+    ...row[period],
+    point: packed(row[period]) ? (row[period].point || '') : '',
+  }])),
+  note: row.note,
+})
 
 /**
  * จำนวนหัวคนที่คิดจากยอดสั่ง = มื้อที่สั่งเยอะที่สุด
@@ -1083,6 +1092,7 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
   const [submissionReceipt, setSubmissionReceipt] = useState(null)
   const [headcount, setHeadcount] = useState({ loading: true, count: null, date: '', error: '' })
   const [submittingOrder, setSubmittingOrder] = useState(false)
+  const [submittingTeamId, setSubmittingTeamId] = useState('')
   const [visibleMeals, setVisibleMeals] = useState(loadVisibleMeals)
   const [orderQueue, setOrderQueue] = useState(loadOrderQueue)
   const [previousDayTemplate, setPreviousDayTemplate] = useState({ loading: true, date: '', rows: 0, error: '' })
@@ -1286,15 +1296,7 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
       return
     }
     const departmentRows = rows.filter((row) => row.project === selectedProject && row.date === selectedDate && row.department === department)
-    const orderPayload = departmentRows.map((row) => ({
-      team: row.team,
-      // จุดส่งมีความหมายเฉพาะมื้อที่มีข้าวห่อ มื้อที่ทานที่โรงครัวล้วนส่งค่าว่าง
-      ...Object.fromEntries(MEAL_PERIODS.map((period) => [period, {
-        ...row[period],
-        point: packed(row[period]) ? (row[period].point || '') : '',
-      }])),
-      note: row.note,
-    }))
+    const orderPayload = departmentRows.map(orderPayloadForRow)
     const request = {
       projectId: selectedProject === 'sekong' ? 'xekong' : 'xepon',
       orderDate: selectedDate,
@@ -1339,6 +1341,66 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
       notify(`ยังส่งไม่สำเร็จ เก็บคิวไว้ในเครื่องแล้ว: ${submitError.message}`)
     } finally {
       setSubmittingOrder(false)
+    }
+  }
+
+  const submitTeam = async (teamRow) => {
+    const team = teamRow.team.trim()
+    if (!team) {
+      notify('กรุณากรอกชื่อทีมงานก่อนส่งโรงครัว')
+      return
+    }
+    if (rowTotal(teamRow) === 0 && !teamRow.note.trim()) {
+      notify(`กรุณากรอกจำนวนอาหารหรือหมายเหตุของทีม “${team}” ก่อนส่ง`)
+      return
+    }
+
+    const submittedByLid = session.lid || ''
+    const submittedByName = session.name || department
+    const orderPayload = [orderPayloadForRow({ ...teamRow, team })]
+    const request = {
+      projectId: selectedProject === 'sekong' ? 'xekong' : 'xepon',
+      orderDate: selectedDate,
+      department,
+      submittedByLid,
+      submittedByName,
+      orders: JSON.stringify(orderPayload),
+    }
+
+    persistRows(rows)
+    setSubmittingTeamId(teamRow.id)
+    try {
+      const payload = supabaseConfigured()
+        ? await saveFoodOrdersOnSupabase({
+          project: selectedProject,
+          date: selectedDate,
+          department,
+          submittedByLid,
+          submittedByName,
+          orders: orderPayload,
+        })
+        : await postToScript('saveFoodOrders', request)
+      const submittedAt = payload.submittedAt || new Date().toISOString()
+      setRows((current) => {
+        const next = current.map((row) => row.id === teamRow.id
+          ? { ...row, team, status: 'sent', submittedAt, submittedByLid, submittedByName }
+          : row)
+        persistRows(next)
+        return next
+      })
+      setSubmissionReceipt({
+        submittedAt,
+        submittedByLid,
+        submittedByName,
+        orderDate: selectedDate,
+        team,
+        target: supabaseConfigured() ? 'Supabase' : (payload.sheet || 'Google Sheets'),
+        saved: Number(payload.saved ?? 1),
+      })
+    } catch (submitError) {
+      notify(`ส่งทีม “${team}” ไม่สำเร็จ: ${submitError.message}`)
+    } finally {
+      setSubmittingTeamId('')
     }
   }
 
@@ -1390,7 +1452,7 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
             <button className="button secondary" onClick={exportCsv}><Download size={17} />ส่งออก CSV</button>
             <button className="button secondary" onClick={() => window.print()}><Printer size={17} />พิมพ์</button>
             <button className="button secondary" onClick={() => save(false)}><Save size={17} />บันทึก</button>
-            <button className="button primary" disabled={submittingOrder} onClick={() => save(true)}><ClipboardCheck size={17} />{submittingOrder ? 'กำลังส่งข้อมูล...' : 'ยืนยันส่งโรงครัว'}</button>
+            <button className="button primary" disabled={submittingOrder || Boolean(submittingTeamId)} onClick={() => save(true)}><ClipboardCheck size={17} />{submittingOrder ? 'กำลังส่งข้อมูล...' : 'ยืนยันส่งโรงครัว'}</button>
           </div>
         </div>
 
@@ -1468,7 +1530,17 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
               <ChevronDown className={collapsed ? 'chevron collapsed' : 'chevron'} size={20} />
             </button>
             {!collapsed && (
-              <OrderTable rows={visibleRows} visibleMeals={visibleMeals} deliveryPoints={deliveryPoints} updateRow={updateRow} updateMeal={updateMeal} removeRow={removeRow} />
+              <OrderTable
+                rows={visibleRows}
+                visibleMeals={visibleMeals}
+                deliveryPoints={deliveryPoints}
+                updateRow={updateRow}
+                updateMeal={updateMeal}
+                removeRow={removeRow}
+                submitTeam={submitTeam}
+                submittingOrder={submittingOrder}
+                submittingTeamId={submittingTeamId}
+              />
             )}
           </section>
         ) : (
@@ -1524,6 +1596,7 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
             <h3 id="receipt-title">ส่งข้อมูลให้โรงครัวแล้ว</h3>
             <div className="receipt-details">
               <div><span>วันที่รับอาหาร</span><strong>{formatDate(submissionReceipt.orderDate)}</strong></div>
+              {submissionReceipt.team && <div><span>ทีมงานที่ส่ง</span><strong>{submissionReceipt.team}</strong></div>}
               <div><span>บันทึกลงฐานข้อมูล</span><strong>{submissionReceipt.target || submissionReceipt.sheet} · {submissionReceipt.saved} ทีมงาน</strong></div>
               <div><span>ผู้บันทึกส่งโรงครัว</span><strong>{submissionReceipt.submittedByLid ? `LID ${submissionReceipt.submittedByLid}` : 'บัญชีแผนก'}{submissionReceipt.submittedByName ? ` · ${submissionReceipt.submittedByName}` : ''}</strong></div>
               <div className="receipt-time"><span>วันที่และเวลาที่ส่งข้อมูล</span><strong>{formatSubmittedAt(submissionReceipt.submittedAt)}</strong></div>
@@ -1536,7 +1609,7 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
   )
 }
 
-function OrderTable({ rows, visibleMeals, deliveryPoints, updateRow, updateMeal, removeRow }) {
+function OrderTable({ rows, visibleMeals, deliveryPoints, updateRow, updateMeal, removeRow, submitTeam, submittingOrder, submittingTeamId }) {
   return (
     <div className="table-scroll">
       <table className="order-entry-table">
@@ -1547,7 +1620,7 @@ function OrderTable({ rows, visibleMeals, deliveryPoints, updateRow, updateMeal,
             <th rowSpan="2" className="grand-head">รวม</th>
             <th rowSpan="2">หมายเหตุ</th>
             <th rowSpan="2">สถานะ</th>
-            <th rowSpan="2" aria-label="จัดการ" />
+            <th rowSpan="2" className="order-action-head">ส่ง / ลบ</th>
           </tr>
           <tr>
             {MEAL_PERIODS.flatMap((period) => {
@@ -1606,7 +1679,25 @@ function OrderTable({ rows, visibleMeals, deliveryPoints, updateRow, updateMeal,
                   <option value="sent" disabled>ส่งโรงครัวแล้ว (ใช้ปุ่มยืนยันส่งโรงครัว)</option>
                 </select>
               </td>
-              <td><button className="delete-button" onClick={() => removeRow(row.id, row.team)} title="ลบรายการ"><Trash2 size={17} /></button></td>
+              <td className="row-actions-cell">
+                <div className="row-actions">
+                  <button
+                    type="button"
+                    className={`team-submit-button ${row.status === 'sent' ? 'sent' : ''}`}
+                    disabled={submittingOrder || Boolean(submittingTeamId)}
+                    onClick={() => submitTeam(row)}
+                    title={`ส่งเฉพาะทีม ${row.team} ให้โรงครัว`}
+                  >
+                    {submittingTeamId === row.id
+                      ? <Clock3 size={16} />
+                      : row.status === 'sent'
+                        ? <CheckCircle2 size={16} />
+                        : <ClipboardCheck size={16} />}
+                    <span>{submittingTeamId === row.id ? 'กำลังส่ง...' : row.status === 'sent' ? 'ส่งอีกครั้ง' : 'ส่งทีมนี้'}</span>
+                  </button>
+                  <button className="delete-button" onClick={() => removeRow(row.id, row.team)} title="ลบรายการ"><Trash2 size={17} /></button>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
