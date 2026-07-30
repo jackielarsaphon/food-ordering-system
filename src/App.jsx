@@ -1981,12 +1981,9 @@ function KitchenDashboard({
     loadProjectHeadcount()
   }, [selectedProject, reportDate])
 
-  const allMealTotal = totals.grand
   const totalStickyRice = MEAL_PERIODS.reduce((sum, period) => sum + totals[period].sticky, 0)
   const totalPlainRice = MEAL_PERIODS.reduce((sum, period) => sum + totals[period].rice, 0)
   const totalPackedRice = totalStickyRice + totalPlainRice
-  const peopleEquivalent = headcountFromMeals(totals)
-  const peopleDifference = projectHeadcount.count === null ? null : peopleEquivalent - projectHeadcount.count
   const departmentReportRows = useMemo(() => departments.map((departmentName) => {
     const departmentRows = reportDayRows.filter((row) => row.department === departmentName)
     const submittedDepartmentRows = departmentRows.filter(isKitchenSubmitted)
@@ -2460,20 +2457,6 @@ function KitchenDashboard({
         <button type="button" onClick={() => setAdminView('delivery-points')}><MapPin size={19} /><span>สถานที่ส่ง</span><i>{deliveryPoints.length}</i></button>
         <button type="button" onClick={() => setAdminView('users')}><UsersRound size={19} /><span>User</span><i>{registeredUsers.length}</i></button>
       </nav>
-
-      <section className="admin-people-overview" aria-label={`เปรียบเทียบจำนวนพนักงานกับยอดสั่งรวม ${MEAL_PERIODS.length} มื้อ`}>
-        <header>
-          <div><p>PEOPLE & {MEAL_PERIODS.length}-MEAL OVERVIEW</p><h2>จำนวนคนเทียบยอดสั่งรวม {MEAL_PERIODS.length} มื้อ — {projects[selectedProject].name}</h2></div>
-          <div className="admin-overview-date"><span>จำนวนคนจาก DataForScan วันนี้</span><strong>{projectHeadcount.date ? formatDate(projectHeadcount.date) : 'กำลังอัปเดต'}</strong><button type="button" disabled={projectHeadcount.loading} onClick={loadProjectHeadcount} title="อัปเดตจำนวนคน"><RotateCcw size={16} /></button></div>
-        </header>
-        <div className="admin-overview-grid">
-          <article className="people-count"><span>พนักงานทั้งหมด</span><strong>{projectHeadcount.loading ? '…' : (projectHeadcount.count ?? '—').toLocaleString('th-TH')}</strong><small>คนใน {projects[selectedProject].shortName}</small></article>
-          <article className="three-meal-count"><span>ยอดสั่งรวม {MEAL_PERIODS.length} มื้อ</span><strong>{allMealTotal.toLocaleString('th-TH')}</strong><small>{MEAL_PERIODS.map((period) => totals[period].total.toLocaleString('th-TH')).join(' + ')} ชุด</small></article>
-          <article className="equivalent-count"><span>หัวคนจากยอดสั่ง</span><strong>{formatCalculatedNumber(peopleEquivalent)}</strong><small>คน · จากมื้อที่สั่งเยอะที่สุด</small></article>
-          <article className={peopleDifference !== null && peopleDifference < 0 ? 'difference-count shortage' : 'difference-count'}><span>{peopleDifference !== null && peopleDifference < 0 ? 'น้อยกว่าจำนวนพนักงาน' : 'มากกว่าจำนวนพนักงาน'}</span><strong>{peopleDifference === null ? '—' : `${peopleDifference > 0 ? '+' : ''}${formatCalculatedNumber(peopleDifference)}`}</strong><small>คน เมื่อเทียบหัวคนกับพนักงาน Work</small></article>
-        </div>
-        {projectHeadcount.error && <div className="admin-overview-error">ดึงจำนวนพนักงานไม่สำเร็จ: {projectHeadcount.error}</div>}
-      </section>
 
       <section className="stats-grid" aria-label="สรุปยอดอาหารทุกแผนก">
         <StatCard label="มื้อเช้า" value={totals.morning.total} tone="morning" icon={UtensilsCrossed} />

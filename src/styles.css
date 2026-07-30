@@ -430,27 +430,6 @@ th.sticky-col { z-index: 4; }
 .delivery-point-admin-controls button.remove { color: #b13a25; border-color: #efc9c0; }
 .delivery-point-admin-controls button.edit:hover { color: white; background: #21877e; border-color: #21877e; }
 .delivery-point-admin-controls button.remove:hover { color: white; background: #bd422c; border-color: #bd422c; }
-.admin-people-overview { margin-bottom: 18px; padding: 20px; background: white; border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 9px 28px rgba(83,44,18,.05); }
-.admin-people-overview > header { margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
-.admin-people-overview > header p { margin: 0 0 2px; color: #13766e; font-size: 10px; font-weight: 900; letter-spacing: .14em; }
-.admin-people-overview > header h2 { margin: 0; color: #342821; font-size: 20px; }
-.admin-overview-date { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 1px 9px; }
-.admin-overview-date span { color: #89786e; font-size: 9px; font-weight: 700; }
-.admin-overview-date strong { color: #346d68; font-size: 11px; }
-.admin-overview-date button { grid-column: 2; grid-row: 1 / 3; width: 38px; height: 38px; display: grid; place-items: center; color: #177b72; background: #e8f6f3; border: 0; border-radius: 10px; }
-.admin-overview-date button:disabled { opacity: .55; cursor: wait; }
-.admin-overview-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-.admin-overview-grid article { min-height: 104px; padding: 15px 17px; display: grid; align-content: center; gap: 2px; border-radius: 15px; }
-.admin-overview-grid article > span { font-size: 11px; font-weight: 750; }
-.admin-overview-grid article > strong { font-size: 30px; line-height: 1.12; }
-.admin-overview-grid article > small { font-size: 9px; font-weight: 650; }
-.admin-overview-grid .people-count { color: #176d66; background: #e5f5f2; border: 1px solid #bde0da; }
-.admin-overview-grid .three-meal-count { color: #954000; background: #fff0e3; border: 1px solid #f0c9aa; }
-.admin-overview-grid .equivalent-count { color: #724d00; background: #fff5c9; border: 1px solid #ead276; }
-.admin-overview-grid .difference-count { color: #17664e; background: #e5f5e9; border: 1px solid #b9dfc4; }
-.admin-overview-grid .difference-count.shortage { color: #a13025; background: #ffebe8; border-color: #efc2bc; }
-.admin-overview-error { margin-top: 10px; padding: 8px 10px; color: #a7251a; background: #fff0ee; border-radius: 9px; font-size: 11px; font-weight: 700; }
-.admin-overview-note { margin: 10px 1px 0; color: #8b7b71; font-size: 9px; }
 .department-report-summary { margin-bottom: 18px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; }
 .department-report-summary article { min-height: 92px; padding: 16px 18px; display: grid; grid-template-columns: 1fr auto auto; align-items: baseline; gap: 5px; color: #176d66; background: #e7f5f2; border: 1px solid #b9ddd7; border-radius: 16px; }
 .department-report-summary article:nth-child(2) { color: #9a4304; background: #fff0e3; border-color: #efcab0; }
@@ -691,12 +670,6 @@ th.sticky-col { z-index: 4; }
   .department-filters .search-box { grid-column: auto; }
   .department-filters .icon-button { position: static; margin-top: 0; width: 100%; }
   .admin-main { width: calc(100% - 20px); }
-  .admin-people-overview { padding: 15px; }
-  .admin-people-overview > header { align-items: flex-start; flex-direction: column; }
-  .admin-overview-date { width: 100%; }
-  .admin-overview-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .admin-overview-grid article { min-height: 91px; padding: 12px; }
-  .admin-overview-grid article > strong { font-size: 25px; }
   .department-report-summary { grid-template-columns: 1fr 1fr; gap: 8px; }
   .department-report-summary article { min-height: 82px; padding: 12px; }
   .department-report-summary strong { font-size: 23px; }
@@ -766,7 +739,7 @@ th.sticky-col { z-index: 4; }
   .admin-session > .hero { display: none !important; }
   .admin-session .admin-main { margin-top: 0; }
   .hero { min-height: auto; padding: 5mm 6mm 3mm; color: #3b2b22; background: white; border-bottom: 1.5pt solid #c84a00; }
-  .brand-mark, .brand span, .project-switcher, .project-indicator, .live-clock, .hero-date svg, .actions, .filters, .admin-filters, .admin-view-tabs, .legend, .next-day-notice, .previous-day-template-notice, .edit-after-submit-notice, .pending-order-notice, .meal-visibility-controls, .order-action-head, .row-actions-cell, .chevron, .logout-button, .admin-people-overview, .admin-main > .stats-grid, .admin-main > .rice-summary-grid { display: none !important; }
+  .brand-mark, .brand span, .project-switcher, .project-indicator, .live-clock, .hero-date svg, .actions, .filters, .admin-filters, .admin-view-tabs, .legend, .next-day-notice, .previous-day-template-notice, .edit-after-submit-notice, .pending-order-notice, .meal-visibility-controls, .order-action-head, .row-actions-cell, .chevron, .logout-button, .admin-main > .stats-grid, .admin-main > .rice-summary-grid { display: none !important; }
   .order-entry-table .meal-hidden { display: table-cell !important; }
   .brand h1 { font-size: 17pt; }
   .brand p { font-size: 7pt; }
@@ -787,16 +760,6 @@ th.sticky-col { z-index: 4; }
   .stat-card.irregular { background: #fce8ef !important; border-color: #d68aa7; }
   .stat-card.grand { color: white !important; background: #33261f !important; border-color: #33261f; }
   .stat-card.grand span, .stat-card.grand small { color: #f1ded2 !important; }
-  .admin-people-overview { margin-bottom: 2mm; padding: 2mm; border-radius: 2mm; box-shadow: none; }
-  .admin-people-overview > header { margin-bottom: 1.5mm; }
-  .admin-people-overview > header p { font-size: 5pt; }
-  .admin-people-overview > header h2 { font-size: 10pt; }
-  .admin-overview-date { font-size: 5pt; }
-  .admin-overview-date button, .admin-overview-note, .admin-overview-error { display: none !important; }
-  .admin-overview-grid { grid-template-columns: repeat(4, 1fr); gap: 1.5mm; }
-  .admin-overview-grid article { min-height: 12mm; padding: 1.5mm 2mm; border-radius: 1.5mm; }
-  .admin-overview-grid article > span, .admin-overview-grid article > small { font-size: 5pt; }
-  .admin-overview-grid article > strong { font-size: 13pt; }
   .department-report-summary { grid-template-columns: repeat(4, 1fr); gap: 1.5mm; margin-bottom: 2mm; }
   .department-report-summary article { min-height: 11mm; padding: 1.5mm 2mm; border-radius: 1.5mm; }
   .department-report-summary span, .department-report-summary small { font-size: 5pt; }
