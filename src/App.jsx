@@ -1170,6 +1170,18 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
     return () => { active = false }
   }, [session, selectedDate, selectedProject, department])
 
+  /**
+   * แถวของแผนกอื่นในวันเดียวกัน — เอาไปรวมเป็นยอดทุกแผนกท้ายตาราง แก้ไขไม่ได้
+   *
+   * นับเฉพาะที่ส่งโรงครัวแล้วเหมือนหน้า Admin เพราะแอปสร้างแถวเปล่าของทุกแผนก
+   * ไว้ในเครื่อง และถ้าเครื่องนี้เคยมีคนแผนกอื่นกรอกค้างไว้แต่ยังไม่ส่ง
+   * ยอดนั้นไม่ควรถูกนับเป็นของโรงครัว
+   */
+  const otherDepartmentRows = useMemo(() => rows.filter((row) => row.project === selectedProject
+    && row.date === selectedDate
+    && row.department !== department
+    && isKitchenSubmitted(row)), [rows, selectedProject, selectedDate, department])
+
   const visibleRows = useMemo(() => {
     const search = query.trim().toLowerCase()
     return rows.filter((row) => row.project === selectedProject
@@ -1477,6 +1489,7 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
             {!collapsed && (
               <OrderTable
                 rows={visibleRows}
+                otherDepartmentRows={otherDepartmentRows}
                 visibleMeals={visibleMeals}
                 deliveryPoints={deliveryPoints}
                 updateRow={updateRow}
@@ -1554,14 +1567,50 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
   )
 }
 
-function OrderTable({ rows, visibleMeals, deliveryPoints, updateRow, updateMeal, removeRow, submitTeam, submittingOrder, submittingTeamId }) {
-  const totals = useMemo(() => summarizeRows(rows), [rows])
+/**
+ * แถวยอดรวมท้ายตารางกรอกออเดอร์ — ใช้ทั้งยอดของแผนกตัวเองและยอดรวมทุกแผนก
+ *
+ * จำนวนคอลัมน์ต้องตรงกับแถวข้อมูลเป๊ะ รวมถึงคลาส meal-hidden ของมื้อที่ถูกซ่อน
+ */
+function OrderTotalRow({ className, label, caption, sourceRows, visibleMeals }) {
+  const totals = useMemo(() => summarizeRows(sourceRows), [sourceRows])
   /** จำนวนจุดส่งที่ไม่ซ้ำกันของมื้อนั้น — นับเฉพาะทีมที่สั่งข้าวห่อจริง */
-  const pointCount = (period) => new Set(rows
+  const pointCount = (period) => new Set(sourceRows
     .filter((row) => packed(row[period]))
     .map((row) => row[period].point)
     .filter(Boolean)).size
-  const notedRows = rows.filter((row) => row.note).length
+
+  return (
+    <tr className={className}>
+      <td className="sticky-col order-total-label">
+        <strong>{label}</strong>
+        <small>{caption}</small>
+      </td>
+      {MEAL_PERIODS.flatMap((period) => {
+        const visibility = visibleMeals[period] ? '' : ' meal-hidden'
+        return [
+          <td key={`${period}-canteen`} className={`group-start ${period}${visibility}`}>{totals[period].canteen.toLocaleString('th-TH')}</td>,
+          <td key={`${period}-sticky`} className={visibility.trim()}>{totals[period].sticky.toLocaleString('th-TH')}</td>,
+          <td key={`${period}-rice`} className={visibility.trim()}>{totals[period].rice.toLocaleString('th-TH')}</td>,
+          <td key={`${period}-pack-total`} className={`total-pack${visibility}`}>{(totals[period].sticky + totals[period].rice).toLocaleString('th-TH')}</td>,
+          <td key={`${period}-point`} className={`total-point${visibility}`}>{pointCount(period)} จุด</td>,
+          <td key={`${period}-total`} className={`total-meal ${period}${visibility}`}>{totals[period].total.toLocaleString('th-TH')}</td>,
+        ]
+      })}
+      <td className="total-grand">{totals.grand.toLocaleString('th-TH')}</td>
+      <td className="total-note">{sourceRows.filter((row) => row.note).length.toLocaleString('th-TH')} หมายเหตุ</td>
+      <td />
+      <td className="row-actions-cell" />
+    </tr>
+  )
+}
+
+function OrderTable({ rows, otherDepartmentRows = [], visibleMeals, deliveryPoints, updateRow, updateMeal, removeRow, submitTeam, submittingOrder, submittingTeamId }) {
+  const allRows = useMemo(() => [...rows, ...otherDepartmentRows], [rows, otherDepartmentRows])
+  const otherDepartmentCount = useMemo(
+    () => new Set(otherDepartmentRows.map((row) => row.department)).size,
+    [otherDepartmentRows],
+  )
 
   return (
     <div className="table-scroll">
@@ -1658,27 +1707,22 @@ function OrderTable({ rows, visibleMeals, deliveryPoints, updateRow, updateMeal,
           ))}
         </tbody>
         <tfoot>
-          <tr className="order-total-row">
-            <td className="sticky-col order-total-label">
-              <strong>รวมทั้งหมด</strong>
-              <small>{rows.length.toLocaleString('th-TH')} ทีมงาน</small>
-            </td>
-            {MEAL_PERIODS.flatMap((period) => {
-              const visibility = visibleMeals[period] ? '' : ' meal-hidden'
-              return [
-                <td key={`${period}-canteen`} className={`group-start ${period}${visibility}`}>{totals[period].canteen.toLocaleString('th-TH')}</td>,
-                <td key={`${period}-sticky`} className={visibility.trim()}>{totals[period].sticky.toLocaleString('th-TH')}</td>,
-                <td key={`${period}-rice`} className={visibility.trim()}>{totals[period].rice.toLocaleString('th-TH')}</td>,
-                <td key={`${period}-pack-total`} className={`total-pack${visibility}`}>{(totals[period].sticky + totals[period].rice).toLocaleString('th-TH')}</td>,
-                <td key={`${period}-point`} className={`total-point${visibility}`}>{pointCount(period)} จุด</td>,
-                <td key={`${period}-total`} className={`total-meal ${period}${visibility}`}>{totals[period].total.toLocaleString('th-TH')}</td>,
-              ]
-            })}
-            <td className="total-grand">{totals.grand.toLocaleString('th-TH')}</td>
-            <td className="total-note">{notedRows.toLocaleString('th-TH')} หมายเหตุ</td>
-            <td />
-            <td className="row-actions-cell" />
-          </tr>
+          <OrderTotalRow
+            className="order-total-row"
+            label="รวมแผนกนี้"
+            caption={`${rows.length.toLocaleString('th-TH')} ทีมงาน`}
+            sourceRows={rows}
+            visibleMeals={visibleMeals}
+          />
+          {otherDepartmentCount > 0 && (
+            <OrderTotalRow
+              className="order-total-row order-grand-row"
+              label="รวมทุกแผนก"
+              caption={`อีก ${otherDepartmentCount} แผนกที่ส่งแล้ว · ${allRows.length.toLocaleString('th-TH')} ทีมงาน · แก้ของแผนกอื่นไม่ได้`}
+              sourceRows={allRows}
+              visibleMeals={visibleMeals}
+            />
+          )}
         </tfoot>
       </table>
     </div>
