@@ -272,9 +272,6 @@ th.sticky-col { z-index: 4; }
 }
 .login-control select, .login-control > input { padding: 0 14px; outline: 0; }
 .login-control select:focus, .login-control > input:focus, .pin-input:focus-within { border-color: var(--orange); box-shadow: 0 0 0 4px rgba(216,74,0,.08); }
-.login-mode-tabs { padding: 4px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: #f1ece7; border-radius: 12px; }
-.login-mode-tabs button { height: 39px; color: #85746a; background: transparent; border: 0; border-radius: 9px; font-size: 12px; font-weight: 750; }
-.login-mode-tabs button.active { color: #9c3508; background: white; box-shadow: 0 3px 10px rgba(73,42,25,.08); }
 .pin-input { display: flex; align-items: center; overflow: hidden; }
 .pin-input input { min-width: 0; flex: 1; height: 100%; padding: 0 14px; border: 0; outline: 0; background: transparent; }
 .pin-input button { width: 48px; height: 100%; display: grid; place-items: center; border: 0; color: #8c7b70; background: transparent; }

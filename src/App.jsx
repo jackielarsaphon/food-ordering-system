@@ -114,8 +114,7 @@ const normalizeDepartmentName = (value = '') => {
   return departments.find((department) => department.toLowerCase().replace(/\s+/g, '') === key) || text
 }
 
-const departmentPins = Object.fromEntries(departments.map((department, index) => [department, String(1101 + index)]))
-const ADMIN_ACCOUNT = 'kitchen-admin'
+/** PIN ที่ฟังก์ชันฝั่งฐานข้อมูลใช้ตรวจสิทธิ์แอดมิน (ตรงกับ app_config.admin_pin) */
 const ADMIN_PIN = '9999'
 
 const projects = {
@@ -680,9 +679,7 @@ function NoteInput({ value, onChange }) {
 }
 
 function LoginPage({ onLogin }) {
-  const [loginMode, setLoginMode] = useState('user')
   const [loginId, setLoginId] = useState('')
-  const [account, setAccount] = useState('')
   const [pin, setPin] = useState('')
   const [showPin, setShowPin] = useState(false)
   const [error, setError] = useState('')
@@ -694,19 +691,13 @@ function LoginPage({ onLogin }) {
   const submit = async (event) => {
     event.preventDefault()
     const normalizedLoginId = loginId.trim().toLowerCase()
-    let registeredUser = loginMode === 'user'
-      ? users.find((user) => user.lid === loginId.trim() || user.username?.toLowerCase() === normalizedLoginId)
-      : null
-    if (loginMode === 'user' && !normalizedLoginId) {
+    let registeredUser = users.find((user) => user.lid === loginId.trim() || user.username?.toLowerCase() === normalizedLoginId)
+    if (!normalizedLoginId) {
       setError('กรุณากรอก LID')
       return
     }
-    if (loginMode === 'department' && !account) {
-      setError('กรุณาเลือกแผนกหรือ Admin โรงครัว')
-      return
-    }
 
-    if (loginMode === 'user' && !registeredUser?.isDemo && (supabaseConfigured() || configuredApiUrl())) {
+    if (!registeredUser?.isDemo && (supabaseConfigured() || configuredApiUrl())) {
       setLoggingIn(true)
       try {
         registeredUser = supabaseConfigured()
@@ -724,39 +715,28 @@ function LoginPage({ onLogin }) {
       }
     }
 
-    if (loginMode === 'user') {
-      if (!registeredUser) {
-        setError(supabaseConfigured() || configuredApiUrl()
-          ? 'ไม่พบบัญชีผู้ใช้สำหรับ LID นี้ กรุณาสมัครใหม่'
-          : 'ไม่พบบัญชีผู้ใช้ และยังไม่ได้ตั้งค่าการเชื่อมต่อฐานข้อมูล')
-        setLoggingIn(false)
-        return
-      }
-      if (registeredUser.pin && pin !== registeredUser.pin) {
-        setError('รหัสเข้าใช้งานไม่ถูกต้อง')
-        setLoggingIn(false)
-        return
-      }
-    } else {
-      const validPin = account === ADMIN_ACCOUNT ? ADMIN_PIN : departmentPins[account]
-      if (pin !== validPin) {
-        setError('รหัสเข้าใช้งานไม่ถูกต้อง')
-        return
-      }
+    if (!registeredUser) {
+      setError(supabaseConfigured() || configuredApiUrl()
+        ? 'ไม่พบบัญชีผู้ใช้สำหรับ LID นี้ กรุณาสมัครใหม่'
+        : 'ไม่พบบัญชีผู้ใช้ และยังไม่ได้ตั้งค่าการเชื่อมต่อฐานข้อมูล')
+      setLoggingIn(false)
+      return
     }
-    const session = registeredUser
-      ? {
-          role: registeredUser.role === 'admin' ? 'admin' : 'department',
-          department: registeredUser.department,
-          name: registeredUser.fullName || [registeredUser.title, registeredUser.firstName, registeredUser.lastName].filter(Boolean).join(' '),
-          userId: registeredUser.id,
-          lid: registeredUser.lid,
-          location: registeredUser.location,
-          company: registeredUser.company,
-        }
-      : account === ADMIN_ACCOUNT
-      ? { role: 'admin', name: 'Admin โรงครัว' }
-      : { role: 'department', department: account, name: account }
+    if (registeredUser.pin && pin !== registeredUser.pin) {
+      setError('รหัสเข้าใช้งานไม่ถูกต้อง')
+      setLoggingIn(false)
+      return
+    }
+
+    const session = {
+      role: registeredUser.role === 'admin' ? 'admin' : 'department',
+      department: registeredUser.department,
+      name: registeredUser.fullName || [registeredUser.title, registeredUser.firstName, registeredUser.lastName].filter(Boolean).join(' '),
+      userId: registeredUser.id,
+      lid: registeredUser.lid,
+      location: registeredUser.location,
+      company: registeredUser.company,
+    }
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
     setLoggingIn(false)
     onLogin(session)
@@ -778,35 +758,19 @@ function LoginPage({ onLogin }) {
           <div className="login-lock"><LockKeyhole size={25} /></div>
           <div>
             <p className="eyebrow">เข้าสู่ระบบ</p>
-            <h2>{loginMode === 'user' ? 'เข้าสู่ระบบด้วย LID' : 'เลือกหน่วยงานของคุณ'}</h2>
-            <span className="login-help">{loginMode === 'user' ? 'กรอก LID และรหัสเข้าใช้งาน' : 'เลือกแผนกและกรอกรหัสประจำแผนก'}</span>
+            <h2>เข้าสู่ระบบด้วย LID</h2>
+            <span className="login-help">กรอก LID และรหัสเข้าใช้งาน</span>
           </div>
 
-          <div className="login-mode-tabs" role="tablist" aria-label="ประเภทการเข้าสู่ระบบ">
-            <button className={loginMode === 'user' ? 'active' : ''} type="button" onClick={() => { setLoginMode('user'); setError(''); setSuccess('') }}>ผู้ใช้งาน LID</button>
-            <button className={loginMode === 'department' ? 'active' : ''} type="button" onClick={() => { setLoginMode('department'); setError(''); setSuccess('') }}>บัญชีแผนก</button>
-          </div>
-
-          {loginMode === 'user' ? (
-            <label className="login-control">
-              <span>LID / ชื่อผู้ใช้</span>
-              <input
-                autoFocus
-                value={loginId}
-                onChange={(event) => { setLoginId(event.target.value); setError('') }}
-                placeholder="กรอก LID เช่น 5911865"
-              />
-            </label>
-          ) : (
-            <label className="login-control">
-              <span>แผนก / ประเภทผู้ใช้</span>
-              <select value={account} onChange={(event) => { setAccount(event.target.value); setError('') }}>
-                <option value="">— เลือกหน่วยงาน —</option>
-                <option value={ADMIN_ACCOUNT}>Admin โรงครัว</option>
-                {departments.map((department) => <option key={department} value={department}>{department}</option>)}
-              </select>
-            </label>
-          )}
+          <label className="login-control">
+            <span>LID / ชื่อผู้ใช้</span>
+            <input
+              autoFocus
+              value={loginId}
+              onChange={(event) => { setLoginId(event.target.value); setError('') }}
+              placeholder="กรอก LID เช่น 5911865"
+            />
+          </label>
 
           <label className="login-control">
             <span>รหัสเข้าใช้งาน</span>
@@ -839,9 +803,7 @@ function LoginPage({ onLogin }) {
             const nextUsers = [...users, user]
             localStorage.setItem(USERS_KEY, JSON.stringify(nextUsers))
             setUsers(nextUsers)
-            setLoginMode('user')
             setLoginId(user.lid || user.username)
-            setAccount('')
             setPin('')
             setError('')
             setSuccess(`สมัครบัญชี LID ${user.lid || user.username} สำเร็จ กรุณากรอกรหัสเพื่อเข้าสู่ระบบ`)
@@ -1543,7 +1505,7 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
               <div><span>วันที่รับอาหาร</span><strong>{formatDate(submissionReceipt.orderDate)}</strong></div>
               {submissionReceipt.team && <div><span>ทีมงานที่ส่ง</span><strong>{submissionReceipt.team}</strong></div>}
               <div><span>บันทึกลงฐานข้อมูล</span><strong>{submissionReceipt.target || submissionReceipt.sheet} · {submissionReceipt.saved} ทีมงาน</strong></div>
-              <div><span>ผู้บันทึกส่งโรงครัว</span><strong>{submissionReceipt.submittedByLid ? `LID ${submissionReceipt.submittedByLid}` : 'บัญชีแผนก'}{submissionReceipt.submittedByName ? ` · ${submissionReceipt.submittedByName}` : ''}</strong></div>
+              <div><span>ผู้บันทึกส่งโรงครัว</span><strong>{submissionReceipt.submittedByLid ? `LID ${submissionReceipt.submittedByLid}` : 'ไม่ระบุผู้บันทึก'}{submissionReceipt.submittedByName ? ` · ${submissionReceipt.submittedByName}` : ''}</strong></div>
               <div className="receipt-time"><span>วันที่และเวลาที่ส่งข้อมูล</span><strong>{formatSubmittedAt(submissionReceipt.submittedAt)}</strong></div>
             </div>
             <button className="button primary" onClick={() => setSubmissionReceipt(null)}>รับทราบ</button>

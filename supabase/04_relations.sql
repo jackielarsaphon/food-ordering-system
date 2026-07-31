@@ -26,6 +26,9 @@ create index if not exists employees_deleted_at_idx on public.employees (deleted
 -- 2) app_users.lid -> employees.lid
 --    on delete restrict = ห้ามลบพนักงานที่ยังมีบัญชีอยู่ (จะไม่เกิดเพราะ soft delete แล้ว)
 --    on update cascade  = ถ้าแก้ LID ในชีต บัญชีตามไปด้วย
+--
+--    เลิกใช้แล้ว: 12_app_users_free_lid.sql ถอด FK ตัวนี้ออก เพราะ 10_register_user_manual.sql
+--    เปลี่ยนกติกาไปว่า LID ที่ไม่มีในชีตก็สมัครได้ ถ้ารัน 04 ซ้ำภายหลังให้รัน 12 ตามด้วย
 -- ---------------------------------------------------------------------------
 do $$
 begin
