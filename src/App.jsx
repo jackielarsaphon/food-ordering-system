@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Building2,
   CalendarDays,
@@ -634,23 +634,37 @@ const summarizeRows = (sourceRows) => sourceRows.reduce((sum, row) => {
  *
  * ตารางสรุปเป็น table-layout: fixed (จำเป็น เพราะมี 33 คอลัมน์และต้องกว้างคงที่
  * ไม่ให้ขยับตามตัวเลขที่เปลี่ยนทุกวัน) เบราว์เซอร์จึงไม่ขยายคอลัมน์ตามเนื้อหาให้เอง
- * ต้องวัดข้อความเองแล้วบอกความกว้างไป ไม่งั้นชื่อทีมยาวๆ จะถูกตัดขึ้นบรรทัดใหม่กลางคำ
+ * ต้องวัดข้อความเองแล้วบอกความกว้างไป ไม่งั้นชื่อทีมยาวๆ จะตกบรรทัดใหม่กลางคำ
+ *
+ * วัดด้วย span จริงที่ก๊อบฟอนต์มาจากช่องในตาราง ไม่ใช่ฟอนต์ที่เขียนตายตัวไว้
+ * เพราะสองอย่างนี้ต้องเป็นตัวเดียวกันเป๊ะ ไม่งั้นค่าที่วัดได้จะสั้นกว่าของจริง
  *
  * โหมดพิมพ์ไม่ได้ใช้ค่านี้ — @media print กำหนดความกว้างเป็น % ทับไว้แล้ว
  */
-const UNIT_COLUMN_FONT = '750 12.5px "Noto Sans Thai", "Noto Sans Lao", system-ui, sans-serif'
-const UNIT_COLUMN_MIN = 200      // ความกว้างเดิม ไม่ให้แผนกที่ชื่อทีมสั้นดูหลวม
-const UNIT_COLUMN_MAX = 420      // กันชื่อผิดปกติดันคอลัมน์มื้ออาหารหลุดจอ
-const UNIT_COLUMN_PADDING = 22   // padding 8px สองข้าง + เผื่อเส้นขอบ
+const UNIT_COLUMN_MIN = 200   // ความกว้างเดิม ไม่ให้แผนกที่ชื่อทีมสั้นดูหลวม
+const UNIT_COLUMN_MAX = 520   // กันชื่อผิดปกติดันคอลัมน์มื้ออาหารหลุดจอ
 
 let textRuler = null
 
-const unitColumnWidth = (teamNames) => {
-  if (typeof document === 'undefined') return UNIT_COLUMN_MIN
-  textRuler = textRuler || document.createElement('canvas').getContext('2d')
-  textRuler.font = UNIT_COLUMN_FONT
-  const widest = teamNames.reduce((max, name) => Math.max(max, textRuler.measureText(name).width), 0)
-  return Math.min(UNIT_COLUMN_MAX, Math.max(UNIT_COLUMN_MIN, Math.ceil(widest) + UNIT_COLUMN_PADDING))
+const unitColumnWidth = (teamNames, sampleCell) => {
+  if (typeof document === 'undefined' || !sampleCell || !teamNames.length) return UNIT_COLUMN_MIN
+  if (!textRuler) {
+    textRuler = document.createElement('span')
+    textRuler.setAttribute('aria-hidden', 'true')
+    textRuler.style.cssText = 'position:absolute;left:-9999px;top:0;white-space:pre;visibility:hidden;'
+    document.body.appendChild(textRuler)
+  }
+  const style = getComputedStyle(sampleCell)
+  for (const property of ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing']) {
+    textRuler.style[property] = style[property]
+  }
+  let widest = 0
+  for (const name of teamNames) {
+    textRuler.textContent = name
+    widest = Math.max(widest, textRuler.getBoundingClientRect().width)
+  }
+  const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) + 2
+  return Math.min(UNIT_COLUMN_MAX, Math.max(UNIT_COLUMN_MIN, Math.ceil(widest + padding)))
 }
 
 function StatCard({ label, value, tone, icon: Icon }) {
@@ -1653,12 +1667,25 @@ const PRINT_BODY_HEIGHT_MM = 238
 const PRINT_MAX_ROW_HEIGHT_MM = 10
 
 function KitchenSummaryTable({ items, totals, submittedRows, showGrandTotal = true }) {
-  const unitWidth = useMemo(
-    () => unitColumnWidth(items.flatMap((item) => item.teamRows.map((teamRow) => teamRow.team))),
+  const tableRef = useRef(null)
+  const teamNames = useMemo(
+    () => items.flatMap((item) => item.teamRows.map((teamRow) => teamRow.team)),
     [items],
   )
+  const [unitWidth, setUnitWidth] = useState(UNIT_COLUMN_MIN)
+
+  useEffect(() => {
+    const measure = () => setUnitWidth(unitColumnWidth(teamNames, tableRef.current?.querySelector('.summary-unit-name')))
+    measure()
+    // Noto Sans Thai มาจาก Google Fonts แบบ display=swap — โหลดเสร็จทีหลังและกว้างกว่า
+    // ฟอนต์สำรองของเครื่อง ถ้าไม่วัดซ้ำตอนฟอนต์มาถึง ชื่อทีมจะล้นคอลัมน์แล้วตกบรรทัด
+    let cancelled = false
+    document.fonts?.ready.then(() => { if (!cancelled) measure() })
+    return () => { cancelled = true }
+  }, [teamNames])
+
   return (
-    <table className="summary-table" style={{ '--unit-column': `${unitWidth}px` }}>
+    <table ref={tableRef} className="summary-table" style={{ '--unit-column': `${unitWidth}px` }}>
       <thead>
         <tr>
           <th rowSpan="2" className="summary-department">แผนก</th>
