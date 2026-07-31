@@ -1555,6 +1555,14 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
 }
 
 function OrderTable({ rows, visibleMeals, deliveryPoints, updateRow, updateMeal, removeRow, submitTeam, submittingOrder, submittingTeamId }) {
+  const totals = useMemo(() => summarizeRows(rows), [rows])
+  /** จำนวนจุดส่งที่ไม่ซ้ำกันของมื้อนั้น — นับเฉพาะทีมที่สั่งข้าวห่อจริง */
+  const pointCount = (period) => new Set(rows
+    .filter((row) => packed(row[period]))
+    .map((row) => row[period].point)
+    .filter(Boolean)).size
+  const notedRows = rows.filter((row) => row.note).length
+
   return (
     <div className="table-scroll">
       <table className="order-entry-table">
@@ -1649,6 +1657,29 @@ function OrderTable({ rows, visibleMeals, deliveryPoints, updateRow, updateMeal,
             </tr>
           ))}
         </tbody>
+        <tfoot>
+          <tr className="order-total-row">
+            <td className="sticky-col order-total-label">
+              <strong>รวมทั้งหมด</strong>
+              <small>{rows.length.toLocaleString('th-TH')} ทีมงาน</small>
+            </td>
+            {MEAL_PERIODS.flatMap((period) => {
+              const visibility = visibleMeals[period] ? '' : ' meal-hidden'
+              return [
+                <td key={`${period}-canteen`} className={`group-start ${period}${visibility}`}>{totals[period].canteen.toLocaleString('th-TH')}</td>,
+                <td key={`${period}-sticky`} className={visibility.trim()}>{totals[period].sticky.toLocaleString('th-TH')}</td>,
+                <td key={`${period}-rice`} className={visibility.trim()}>{totals[period].rice.toLocaleString('th-TH')}</td>,
+                <td key={`${period}-pack-total`} className={`total-pack${visibility}`}>{(totals[period].sticky + totals[period].rice).toLocaleString('th-TH')}</td>,
+                <td key={`${period}-point`} className={`total-point${visibility}`}>{pointCount(period)} จุด</td>,
+                <td key={`${period}-total`} className={`total-meal ${period}${visibility}`}>{totals[period].total.toLocaleString('th-TH')}</td>,
+              ]
+            })}
+            <td className="total-grand">{totals.grand.toLocaleString('th-TH')}</td>
+            <td className="total-note">{notedRows.toLocaleString('th-TH')} หมายเหตุ</td>
+            <td />
+            <td className="row-actions-cell" />
+          </tr>
+        </tfoot>
       </table>
     </div>
   )

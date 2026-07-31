@@ -220,6 +220,21 @@ th.sticky-col { z-index: 4; }
 .lateNight-calc { color: white; background: #7865c7; }
 .irregular-calc { color: white; background: #bd527a; }
 .row-total { min-width: 74px; color: #8e2c00; background: #f8e5ff; font-size: 15px; }
+
+/* แถวยอดรวมท้ายตารางกรอกออเดอร์ — สีเดียวกับ tfoot ของตารางสรุปหน้า Admin */
+.order-total-row td { height: 48px; color: white; background: #342923; border-color: #52443c; font-size: 14px; font-weight: 850; }
+.order-total-label { padding-left: 11px; text-align: left; box-shadow: 7px 0 10px -10px #4b2d17; }
+.order-total-label strong { display: block; font-size: 13px; }
+.order-total-label small { color: #cdbbae; font-size: 10.5px; font-weight: 650; }
+.order-total-row .total-pack { color: #241900; background: #f2c233; font-size: 15px; font-weight: 950; }
+.order-total-row .total-meal { font-size: 15px; font-weight: 950; }
+.order-total-row .total-meal.morning { background: #d95a08; }
+.order-total-row .total-meal.lunch { background: #c99000; }
+.order-total-row .total-meal.dinner { background: #087f77; }
+.order-total-row .total-meal.lateNight { background: #5946a8; }
+.order-total-row .total-meal.irregular { background: #963457; }
+.order-total-row .total-grand { color: #ffe6b0; font-size: 16px; font-weight: 950; }
+.order-total-row .total-point, .order-total-row .total-note { color: #cdbbae; font-size: 11px; font-weight: 700; }
 .note-input { width: 280px; min-height: 44px; padding: 7px 9px; resize: vertical; overflow-y: hidden; color: #354b56; background: #f3f9fc; border: 1px solid #d9e3eb; border-radius: 8px; outline: 0; line-height: 1.35; white-space: pre-wrap; }
 .note-input:focus { border-color: #6694aa; }
 .status { width: 125px; height: 32px; border: 0; border-radius: 999px; padding: 0 9px; font-size: 11px; font-weight: 750; outline: 0; }
@@ -805,6 +820,15 @@ th.sticky-col { z-index: 4; }
   .team-cell input, .qty-input, .note-input, .status { width: 100%; min-width: 0; height: 20px; padding: 1px; border: 0; font-size: 7px; }
   .sticky-col { position: static; }
   .subhead, .calc { min-width: 0; }
+  /* แถวยอดรวมท้ายตาราง — สูงเท่าแถวอื่นและคงสีพื้นเข้มไว้ */
+  .order-total-row td { height: 24px; color: white !important; background: #2f241f !important; border-color: #52443c; font-size: 8px; }
+  .order-total-label { box-shadow: none; }
+  .order-total-label strong { font-size: 8px; }
+  .order-total-label small { color: #d3c3b7 !important; font-size: 6px; }
+  .order-total-row .total-pack { color: #241900 !important; background: #f2c233 !important; }
+  .order-total-row .total-meal { font-size: 9px; }
+  .order-total-row .total-grand { color: #ffe6b0 !important; font-size: 9px; }
+  .order-total-row .total-point, .order-total-row .total-note { color: #d3c3b7 !important; font-size: 6px; }
   .rice-summary-grid { grid-template-columns: repeat(4, 1fr); gap: 2mm; margin-bottom: 2mm; }
   .rice-summary-grid article { min-height: 10mm; padding: 1.5mm 3mm; border-radius: 2mm; box-shadow: none; }
   .rice-summary-grid span { font-size: 6pt; }
