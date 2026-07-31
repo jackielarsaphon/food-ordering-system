@@ -629,6 +629,30 @@ const summarizeRows = (sourceRows) => sourceRows.reduce((sum, row) => {
   grand: 0,
 })
 
+/**
+ * ความกว้างคอลัมน์ "หน่วยงาน / ทีมงาน" ของตารางสรุป
+ *
+ * ตารางสรุปเป็น table-layout: fixed (จำเป็น เพราะมี 33 คอลัมน์และต้องกว้างคงที่
+ * ไม่ให้ขยับตามตัวเลขที่เปลี่ยนทุกวัน) เบราว์เซอร์จึงไม่ขยายคอลัมน์ตามเนื้อหาให้เอง
+ * ต้องวัดข้อความเองแล้วบอกความกว้างไป ไม่งั้นชื่อทีมยาวๆ จะถูกตัดขึ้นบรรทัดใหม่กลางคำ
+ *
+ * โหมดพิมพ์ไม่ได้ใช้ค่านี้ — @media print กำหนดความกว้างเป็น % ทับไว้แล้ว
+ */
+const UNIT_COLUMN_FONT = '750 12.5px "Noto Sans Thai", "Noto Sans Lao", system-ui, sans-serif'
+const UNIT_COLUMN_MIN = 200      // ความกว้างเดิม ไม่ให้แผนกที่ชื่อทีมสั้นดูหลวม
+const UNIT_COLUMN_MAX = 420      // กันชื่อผิดปกติดันคอลัมน์มื้ออาหารหลุดจอ
+const UNIT_COLUMN_PADDING = 22   // padding 8px สองข้าง + เผื่อเส้นขอบ
+
+let textRuler = null
+
+const unitColumnWidth = (teamNames) => {
+  if (typeof document === 'undefined') return UNIT_COLUMN_MIN
+  textRuler = textRuler || document.createElement('canvas').getContext('2d')
+  textRuler.font = UNIT_COLUMN_FONT
+  const widest = teamNames.reduce((max, name) => Math.max(max, textRuler.measureText(name).width), 0)
+  return Math.min(UNIT_COLUMN_MAX, Math.max(UNIT_COLUMN_MIN, Math.ceil(widest) + UNIT_COLUMN_PADDING))
+}
+
 function StatCard({ label, value, tone, icon: Icon }) {
   return (
     <article className={`stat-card ${tone}`}>
@@ -1629,8 +1653,12 @@ const PRINT_BODY_HEIGHT_MM = 238
 const PRINT_MAX_ROW_HEIGHT_MM = 10
 
 function KitchenSummaryTable({ items, totals, submittedRows, showGrandTotal = true }) {
+  const unitWidth = useMemo(
+    () => unitColumnWidth(items.flatMap((item) => item.teamRows.map((teamRow) => teamRow.team))),
+    [items],
+  )
   return (
-    <table className="summary-table">
+    <table className="summary-table" style={{ '--unit-column': `${unitWidth}px` }}>
       <thead>
         <tr>
           <th rowSpan="2" className="summary-department">แผนก</th>
