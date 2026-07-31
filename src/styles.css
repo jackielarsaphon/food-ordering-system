@@ -810,7 +810,11 @@ th.sticky-col { z-index: 4; }
   .summary-department-cell small, .submission-info small { font-size: max(2.6pt, calc(var(--print-font-size, 6pt) - 1pt)); }
   .summary-unit-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .summary-note { height: var(--print-row-height, 5mm); overflow: hidden; text-overflow: clip; overflow-wrap: anywhere; word-break: break-word; white-space: normal; font-size: var(--print-font-size, 6pt) !important; line-height: 1; }
-  .submission-info { min-width: 0; gap: 0; line-height: 1; }
+  /* ทุกช่องต้องสูงบรรทัดเดียว ไม่งั้นแถวจะดันกันจนตารางล้นออกนอก 2 หน้าที่ตั้งใจ
+     "ส่งห่อที่" มี 5 คอลัมน์ต่อแถว จึงบานเร็วที่สุด ส่วนสถานะเดิมวางซ้อนกัน 2 บรรทัด */
+  .summary-delivery { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .submission-info { min-width: 0; padding: 0; display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: .6mm; overflow: hidden; line-height: 1; }
+  .submission-info > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .submission-time { display: none !important; }
   .submission-user { max-width: 100% !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .submission-status { padding: .2mm .5mm; font-size: max(2.6pt, calc(var(--print-font-size, 6pt) - .6pt)); line-height: 1; }
