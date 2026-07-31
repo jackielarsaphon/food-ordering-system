@@ -1749,7 +1749,7 @@ function KitchenSummaryTable({ items, totals, submittedRows, showGrandTotal = tr
                       <div><strong>{departmentLabel}</strong><small>{item.teams} ทีมงาน</small></div>
                     </td>
                   )}
-                  <td><strong>รวม {item.department}</strong></td>
+                  <td className="subtotal-department-name"><strong>รวม {item.department}</strong></td>
                   <td><span className={`submission-status ${item.sent === item.teams ? 'complete' : item.sent ? 'partial' : ''}`}>{item.sent}/{item.teams} ส่งแล้ว</span></td>
                   {MEAL_PERIODS.flatMap((period) => [
                     <td key={`${period}-canteen`} className={`subtotal-value group-start ${period}`}>{item.totals[period].canteen}</td>,
@@ -1770,7 +1770,9 @@ function KitchenSummaryTable({ items, totals, submittedRows, showGrandTotal = tr
       {showGrandTotal && (
         <tfoot>
           <tr>
-            <td colSpan="3"><strong>รวมทุกแผนก</strong></td>
+            {/* colSpan 2 ไม่ใช่ 3 เพื่อให้ขอบขวาของช่องนี้ตรงกับคอลัมน์ที่ตรึงไว้ในตัวตาราง */}
+            <td className="footer-label" colSpan="2"><strong>รวมทุกแผนก</strong></td>
+            <td className="footer-label-spacer" />
             {MEAL_PERIODS.flatMap((period) => [
               <td key={`${period}-canteen`} className={`group-start ${period}`}>{totals[period].canteen}</td>,
               <td key={`${period}-sticky`}>{totals[period].sticky}</td>,

@@ -383,6 +383,24 @@ th.sticky-col { z-index: 4; }
 .department-subtotal-row .subtotal-note { color: #75655c; font-size: 11px; font-weight: 700; }
 .summary-table tfoot td { height: 48px; color: white; background: #342923; border-color: #52443c; font-size: 14px; font-weight: 800; }
 .summary-table tfoot td:first-child { padding-left: 15px; text-align: left; }
+
+/*
+ * ตรึงคอลัมน์ แผนก + ทีมงาน ไว้ตอนเลื่อนดูคอลัมน์มื้ออาหาร
+ *
+ * ตารางกว้าง 3040px เลื่อนไปทางขวาไม่กี่ที ชื่อแผนกกับชื่อทีมก็หลุดจอ
+ * แล้วอ่านไม่ออกว่าเลขที่เห็นเป็นของทีมไหน
+ *
+ * left ของคอลัมน์ที่ 2 ต้องเท่ากับความกว้างคอลัมน์แรก (170px ตาม .summary-department)
+ * ทุกช่องที่ตรึงต้องมีสีพื้นทึบ ไม่งั้นตัวเลขที่เลื่อนผ่านจะทะลุขึ้นมาเห็น
+ */
+.summary-department, .summary-department-cell { position: sticky; left: 0; z-index: 2; }
+.summary-units, .summary-unit-name, .subtotal-department-name, .footer-label { position: sticky; left: 170px; z-index: 2; }
+.footer-label { left: 0; }
+.summary-table thead .summary-department, .summary-table thead .summary-units { z-index: 4; }
+.summary-unit-name { background: white; }
+.subtotal-department-name { background: #faeee4; }
+/* เส้นเงาบอกขอบเขตส่วนที่ตรึงไว้ */
+.summary-unit-name, .subtotal-department-name, .summary-units, .footer-label { box-shadow: 7px 0 10px -10px #4b2d17; }
 .summary-table tfoot .footer-pack-total { color: #241900; background: #f2c233; font-size: 15px; font-weight: 950; }
 .summary-table tfoot .footer-meal-total { font-size: 15px; font-weight: 950; }
 .summary-table tfoot .footer-meal-total.morning { background: #d95a08; }
@@ -800,6 +818,9 @@ th.sticky-col { z-index: 4; }
   .summary-table tr { break-inside: avoid; page-break-inside: avoid; }
   .summary-table th { height: var(--print-header-height, 5mm); padding: .4mm .5mm; font-size: var(--print-font-size, 6pt) !important; line-height: 1; white-space: normal; }
   .summary-table td { height: var(--print-row-height, 5mm); min-width: 0 !important; padding: .3mm .5mm; font-size: var(--print-font-size, 6pt) !important; line-height: 1; }
+  /* พิมพ์ลงกระดาษไม่มีการเลื่อน ปลดการตรึงคอลัมน์และเงาขอบออก */
+  .summary-department, .summary-department-cell, .summary-units, .summary-unit-name,
+  .subtotal-department-name, .footer-label { position: static; box-shadow: none; }
   .summary-department, .summary-department-cell { width: 8%; min-width: 0 !important; }
   .summary-units, .summary-unit-name { width: 11%; min-width: 0 !important; }
   .summary-status-head { width: 8%; }
