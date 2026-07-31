@@ -192,8 +192,13 @@ tbody tr:hover td { filter: brightness(.985); }
 .sticky-col { position: sticky; left: 0; z-index: 2; }
 th.sticky-col { z-index: 4; }
 .team-col { min-width: 220px; text-align: left; }
-.team-cell { background: white; box-shadow: 7px 0 10px -10px #4b2d17; }
-.team-cell input { width: 208px; border: 0; outline: 0; padding: 7px 8px; border-radius: 7px; font-weight: 650; color: #423128; background: transparent; }
+.team-cell { text-align: left; background: white; box-shadow: 7px 0 10px -10px #4b2d17; }
+/* ช่องกรอกกว้างตามชื่อทีม: ::after วาดข้อความเดียวกันแบบซ่อนไว้เพื่อดันความกว้างให้ input */
+.team-input { display: grid; max-width: 520px; font-weight: 650; }
+.team-input::after,
+.team-cell input { grid-area: 1 / 1; min-width: 208px; padding: 7px 8px; font: inherit; font-weight: inherit; letter-spacing: inherit; }
+.team-input::after { content: attr(data-value) ' '; white-space: pre; visibility: hidden; }
+.team-cell input { width: 100%; border: 0; outline: 0; border-radius: 7px; color: #423128; background: transparent; }
 .team-cell input:focus { background: #fff6ed; box-shadow: inset 0 0 0 1px #e99965; }
 .meal-head { color: white; font-weight: 800; letter-spacing: .03em; }
 .morning-head { background: #e85c00; }
@@ -762,6 +767,9 @@ th.sticky-col { z-index: 4; }
   table { width: 100%; font-size: 7px; }
   th, td { padding: 2px; height: 24px; }
   .team-col { min-width: 100px; }
+  /* พิมพ์บังคับความกว้างคอลัมน์เอง ไม่ต้องให้ ::after ดันตามชื่อทีม */
+  .team-input { display: block; max-width: none; }
+  .team-input::after { display: none; }
   .team-cell input, .qty-input, .note-input, .status { width: 100%; min-width: 0; height: 20px; padding: 1px; border: 0; font-size: 7px; }
   .sticky-col { position: static; }
   .subhead, .calc { min-width: 0; }

@@ -1547,7 +1547,10 @@ function OrderTable({ rows, visibleMeals, deliveryPoints, updateRow, updateMeal,
           {rows.map((row) => (
             <tr key={row.id}>
               <td className="sticky-col team-cell">
-                <input value={row.team} onChange={(event) => updateRow(row.id, { team: event.target.value })} aria-label="ชื่อทีมงาน" />
+                {/* data-value ทำให้ ::after วาดข้อความเดียวกันแบบมองไม่เห็น ช่องกรอกจึงกว้างตามชื่อทีม */}
+                <span className="team-input" data-value={row.team}>
+                  <input value={row.team} onChange={(event) => updateRow(row.id, { team: event.target.value })} aria-label="ชื่อทีมงาน" />
+                </span>
               </td>
               {MEAL_PERIODS.flatMap((period) => {
                 const visibility = visibleMeals[period] ? '' : ' meal-hidden'
