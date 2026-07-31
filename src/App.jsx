@@ -415,6 +415,36 @@ const headcountFromMeals = (mealTotals) => MEAL_PERIODS.reduce(
   0,
 )
 const isKitchenSubmitted = (row) => row.status === 'sent' && Boolean(row.submittedAt)
+
+/**
+ * ปั้นข้อมูลให้ KitchenSummaryTable — 1 รายการต่อ 1 แผนก
+ *
+ * ใช้ทั้งหน้า Admin โรงครัวและหน้าแผนก จึงต้องอยู่ที่เดียวเพื่อไม่ให้เลขสองหน้าไม่ตรงกัน
+ * ทีมที่ยังไม่กดส่งโรงครัวถูกล้างยอดเป็นศูนย์ เพราะยอดที่ยังไม่ส่งไม่ใช่ยอดที่โรงครัวได้รับ
+ */
+const buildDepartmentSummaries = (dayRows) => departments.map((department) => {
+  const departmentRows = dayRows.filter((row) => row.department === department)
+  const submittedDepartmentRows = departmentRows.filter(isKitchenSubmitted)
+  return {
+    department,
+    teams: departmentRows.length,
+    teamRows: departmentRows.map((row) => isKitchenSubmitted(row) ? row : {
+      ...row,
+      morning: emptyMeal(),
+      lunch: emptyMeal(),
+      dinner: emptyMeal(),
+      lateNight: emptyMeal(),
+      irregular: emptyMeal(),
+      note: '',
+      status: row.status === 'confirmed' ? 'confirmed' : 'draft',
+      submittedAt: null,
+      submittedByLid: '',
+      submittedByName: '',
+    }),
+    sent: submittedDepartmentRows.length,
+    totals: summarizeRows(submittedDepartmentRows),
+  }
+})
 const formatDate = (date) => new Date(`${date}T00:00:00`).toLocaleDateString('th-TH', { dateStyle: 'long' })
 const formatSubmittedAt = (dateTime) => dateTime
   ? new Date(dateTime).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'medium' })
@@ -1171,16 +1201,15 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
   }, [session, selectedDate, selectedProject, department])
 
   /**
-   * แถวของแผนกอื่นในวันเดียวกัน — เอาไปรวมเป็นยอดทุกแผนกท้ายตาราง แก้ไขไม่ได้
+   * ยอดสรุปข้าวทุกแผนกของวันที่เลือก — ตารางเดียวกับที่หน้า Admin โรงครัวใช้
    *
-   * นับเฉพาะที่ส่งโรงครัวแล้วเหมือนหน้า Admin เพราะแอปสร้างแถวเปล่าของทุกแผนก
-   * ไว้ในเครื่อง และถ้าเครื่องนี้เคยมีคนแผนกอื่นกรอกค้างไว้แต่ยังไม่ส่ง
-   * ยอดนั้นไม่ควรถูกนับเป็นของโรงครัว
+   * เป็นตัวเลขอ่านอย่างเดียว แผนกนี้แก้ได้แค่ตารางกรอกของตัวเองด้านบน
    */
-  const otherDepartmentRows = useMemo(() => rows.filter((row) => row.project === selectedProject
-    && row.date === selectedDate
-    && row.department !== department
-    && isKitchenSubmitted(row)), [rows, selectedProject, selectedDate, department])
+  const allDayRows = useMemo(() => rows.filter((row) => row.project === selectedProject
+    && row.date === selectedDate), [rows, selectedProject, selectedDate])
+  const allSummaries = useMemo(() => buildDepartmentSummaries(allDayRows), [allDayRows])
+  const allSubmittedRows = useMemo(() => allDayRows.filter(isKitchenSubmitted), [allDayRows])
+  const allTotals = useMemo(() => summarizeRows(allSubmittedRows), [allSubmittedRows])
 
   const visibleRows = useMemo(() => {
     const search = query.trim().toLowerCase()
@@ -1489,7 +1518,6 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
             {!collapsed && (
               <OrderTable
                 rows={visibleRows}
-                otherDepartmentRows={otherDepartmentRows}
                 visibleMeals={visibleMeals}
                 deliveryPoints={deliveryPoints}
                 updateRow={updateRow}
@@ -1504,6 +1532,24 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
         ) : (
           <div className="empty-state"><Search size={30} /><strong>ไม่พบรายการ</strong><span>ลองเปลี่ยนวันที่หรือคำค้นหา</span></div>
         )}
+
+        <section className="all-departments-summary">
+          <header>
+            <span className="all-departments-icon"><UtensilsCrossed size={20} /></span>
+            <div>
+              <p>KITCHEN ORDER SUMMARY</p>
+              <strong>ยอดสรุปข้าวทุกแผนก · {formatDate(selectedDate)}</strong>
+              <small>ตารางเดียวกับที่โรงครัวเห็น · อ่านอย่างเดียว แก้ไขได้แค่ตารางของแผนก {department} ด้านบน</small>
+            </div>
+            <span className="all-departments-total">
+              <small>รวมทุกแผนก</small>
+              <strong>{allTotals.grand.toLocaleString('th-TH')} ชุด</strong>
+            </span>
+          </header>
+          <div className="admin-table-scroll">
+            <KitchenSummaryTable items={allSummaries} totals={allTotals} submittedRows={allSubmittedRows} />
+          </div>
+        </section>
       </section>
       </main>
 
@@ -1605,13 +1651,7 @@ function OrderTotalRow({ className, label, caption, sourceRows, visibleMeals }) 
   )
 }
 
-function OrderTable({ rows, otherDepartmentRows = [], visibleMeals, deliveryPoints, updateRow, updateMeal, removeRow, submitTeam, submittingOrder, submittingTeamId }) {
-  const allRows = useMemo(() => [...rows, ...otherDepartmentRows], [rows, otherDepartmentRows])
-  const otherDepartmentCount = useMemo(
-    () => new Set(otherDepartmentRows.map((row) => row.department)).size,
-    [otherDepartmentRows],
-  )
-
+function OrderTable({ rows, visibleMeals, deliveryPoints, updateRow, updateMeal, removeRow, submitTeam, submittingOrder, submittingTeamId }) {
   return (
     <div className="table-scroll">
       <table className="order-entry-table">
@@ -1714,15 +1754,6 @@ function OrderTable({ rows, otherDepartmentRows = [], visibleMeals, deliveryPoin
             sourceRows={rows}
             visibleMeals={visibleMeals}
           />
-          {otherDepartmentCount > 0 && (
-            <OrderTotalRow
-              className="order-total-row order-grand-row"
-              label="รวมทุกแผนก"
-              caption={`อีก ${otherDepartmentCount} แผนกที่ส่งแล้ว · ${allRows.length.toLocaleString('th-TH')} ทีมงาน · แก้ของแผนกอื่นไม่ได้`}
-              sourceRows={allRows}
-              visibleMeals={visibleMeals}
-            />
-          )}
         </tfoot>
       </table>
     </div>
@@ -1901,29 +1932,8 @@ function KitchenDashboard({
   const submittedReportDayRows = useMemo(() => reportDayRows.filter(isKitchenSubmitted), [reportDayRows])
   const totals = useMemo(() => summarizeRows(submittedDayRows), [submittedDayRows])
   const reportTotals = useMemo(() => summarizeRows(submittedReportDayRows), [submittedReportDayRows])
-  const summaries = useMemo(() => departments.map((department) => {
-    const departmentRows = dayRows.filter((row) => row.department === department)
-    const submittedDepartmentRows = departmentRows.filter(isKitchenSubmitted)
-    return {
-      department,
-      teams: departmentRows.length,
-      teamRows: departmentRows.map((row) => isKitchenSubmitted(row) ? row : {
-        ...row,
-        morning: emptyMeal(),
-        lunch: emptyMeal(),
-        dinner: emptyMeal(),
-        lateNight: emptyMeal(),
-        irregular: emptyMeal(),
-        note: '',
-        status: row.status === 'confirmed' ? 'confirmed' : 'draft',
-        submittedAt: null,
-        submittedByLid: '',
-        submittedByName: '',
-      }),
-      sent: submittedDepartmentRows.length,
-      totals: summarizeRows(submittedDepartmentRows),
-    }
-  }).filter((item) => !query.trim() || item.department.toLowerCase().includes(query.trim().toLowerCase())), [dayRows, query])
+  const summaries = useMemo(() => buildDepartmentSummaries(dayRows)
+    .filter((item) => !query.trim() || item.department.toLowerCase().includes(query.trim().toLowerCase())), [dayRows, query])
   /**
    * แผนหน้าพิมพ์ A3 — สร้างตารางแยกเป็นหน้าจริงเพื่อให้จุดตัดหน้าแน่นอน
    * และปรับความสูงแถวของแต่ละหน้าตามจำนวนข้อมูลในหน้านั้น

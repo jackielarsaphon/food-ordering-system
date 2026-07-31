@@ -235,15 +235,20 @@ th.sticky-col { z-index: 4; }
 .order-total-row .total-meal.irregular { background: #963457; }
 .order-total-row .total-grand { color: #ffe6b0; font-size: 16px; font-weight: 950; }
 .order-total-row .total-point, .order-total-row .total-note { color: #cdbbae; font-size: 11px; font-weight: 700; }
-/* แถวรวมทุกแผนก — สีจางกว่าเพื่อบอกว่าเป็นตัวเลขอ่านอย่างเดียว ไม่ใช่ของแผนกนี้ */
-.order-grand-row td { background: #56463c; border-top: 2px solid #6f5c50; }
-.order-grand-row .total-pack { color: #4a3b12; background: #d9b45c; }
-.order-grand-row .total-meal.morning { background: #a5501a; }
-.order-grand-row .total-meal.lunch { background: #9c7620; }
-.order-grand-row .total-meal.dinner { background: #1e6d68; }
-.order-grand-row .total-meal.lateNight { background: #55488c; }
-.order-grand-row .total-meal.irregular { background: #7c3f56; }
-.order-grand-row .order-total-label small { color: #cfbfb4; }
+/* ยอดสรุปข้าวทุกแผนกบนหน้าแผนก — ตารางเดียวกับหน้า Admin แต่อ่านอย่างเดียว */
+.all-departments-summary { margin-top: 22px; }
+.all-departments-summary > header {
+  margin-bottom: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 14px;
+  background: #fffaf6; border: 1px solid var(--line); border-radius: 14px;
+}
+.all-departments-summary > header > div { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.all-departments-icon { width: 42px; height: 42px; flex: 0 0 auto; display: grid; place-items: center; color: white; background: var(--orange); border-radius: 12px; }
+.all-departments-summary p { margin: 0; color: #a08674; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+.all-departments-summary > header strong { font-size: 15px; }
+.all-departments-summary > header small { color: var(--muted); font-size: 11.5px; }
+.all-departments-total { flex: 0 0 auto; display: grid; justify-items: end; text-align: right; }
+.all-departments-total small { color: var(--muted); font-size: 11px; }
+.all-departments-total strong { color: var(--orange-deep); font-size: 19px; }
 .note-input { width: 280px; min-height: 44px; padding: 7px 9px; resize: vertical; overflow-y: hidden; color: #354b56; background: #f3f9fc; border: 1px solid #d9e3eb; border-radius: 8px; outline: 0; line-height: 1.35; white-space: pre-wrap; }
 .note-input:focus { border-color: #6694aa; }
 .status { width: 125px; height: 32px; border: 0; border-radius: 999px; padding: 0 9px; font-size: 11px; font-weight: 750; outline: 0; }
@@ -838,7 +843,8 @@ th.sticky-col { z-index: 4; }
   .order-total-row .total-meal { font-size: 9px; }
   .order-total-row .total-grand { color: #ffe6b0 !important; font-size: 9px; }
   .order-total-row .total-point, .order-total-row .total-note { color: #d3c3b7 !important; font-size: 6px; }
-  .order-grand-row td { background: #52443b !important; border-top-width: 1px; }
+  /* พิมพ์จากหน้าแผนก = ใบสั่งของแผนกตัวเอง ไม่ต้องพ่วงยอดทุกแผนกไปด้วย */
+  .all-departments-summary { display: none !important; }
   .rice-summary-grid { grid-template-columns: repeat(4, 1fr); gap: 2mm; margin-bottom: 2mm; }
   .rice-summary-grid article { min-height: 10mm; padding: 1.5mm 3mm; border-radius: 2mm; box-shadow: none; }
   .rice-summary-grid span { font-size: 6pt; }
