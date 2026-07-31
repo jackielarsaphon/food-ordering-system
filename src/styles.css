@@ -183,13 +183,26 @@ main { width: min(1800px, calc(100% - 32px)); margin: -18px auto 50px; position:
 .department-total strong { color: var(--orange-deep); }
 .chevron { color: #9b897c; transition: transform .18s ease; }
 .chevron.collapsed { transform: rotate(-90deg); }
-.table-scroll { overflow-x: auto; border-top: 1px solid var(--line); }
+/*
+ * ตารางเลื่อนในกรอบของตัวเอง ไม่ใช่เลื่อนทั้งหน้า — จำเป็นเพื่อให้ตรึงหัวตารางได้
+ * เพราะ position: sticky เกาะกับกรอบที่เลื่อน ถ้ากรอบสูงเท่าตารางก็ไม่มีอะไรให้เกาะ
+ * (ตารางนี้ยาวเป็นร้อยแถวเพราะมีทีมของทุกแผนกต่อท้าย)
+ */
+.table-scroll { max-height: calc(100vh - 150px); overflow: auto; border-top: 1px solid var(--line); }
 table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
 th { height: 36px; padding: 7px 8px; color: #66564c; background: #f8f5f1; border-right: 1px solid #eadfd6; border-bottom: 1px solid #e2d5ca; white-space: nowrap; }
 td { height: 46px; padding: 5px 6px; text-align: center; border-right: 1px solid #eee5dd; border-bottom: 1px solid #eee5dd; background: white; }
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr:hover td { filter: brightness(.985); }
 .sticky-col { position: sticky; left: 0; z-index: 2; }
+/*
+ * ตรึงหัวตาราง 2 ชั้น — ชั้นชื่อมื้อเกาะที่ 0 ชั้นย่อยเกาะใต้ลงมาเท่าความสูง th (36px)
+ * ช่อง "ทีมงาน" ตรึงทั้งแนวตั้งและแนวนอน จึงต้องอยู่ชั้นบนสุด
+ */
+.order-entry-table thead th { position: sticky; top: 0; z-index: 3; }
+.order-entry-table thead tr:nth-child(2) th { top: var(--order-head-row, 36px); }
+/* ต้องเจาะจงกว่ากฎ .order-entry-table thead th ข้างบน ไม่งั้น z-index ไม่มีผลและช่องนี้จะจมหาย */
+.order-entry-table thead th.sticky-col { z-index: 5; }
 th.sticky-col { z-index: 4; }
 .team-col { min-width: 220px; text-align: left; }
 .team-cell { text-align: left; background: white; box-shadow: 7px 0 10px -10px #4b2d17; }
@@ -843,7 +856,7 @@ th.sticky-col { z-index: 4; }
   .workspace-heading h2 { font-size: 13pt; }
   .department-card { break-inside: avoid; }
   .department-head { min-height: 48px; }
-  .table-scroll { overflow: visible; }
+  .table-scroll { max-height: none; overflow: visible; }
   table { width: 100%; font-size: 7px; }
   th, td { padding: 2px; height: 24px; }
   .team-col { min-width: 100px; }
@@ -851,7 +864,7 @@ th.sticky-col { z-index: 4; }
   .team-input { display: block; max-width: none; }
   .team-input::after { display: none; }
   .team-cell input, .qty-input, .note-input, .status { width: 100%; min-width: 0; height: 20px; padding: 1px; border: 0; font-size: 7px; }
-  .sticky-col { position: static; }
+  .sticky-col, .order-entry-table thead th { position: static; }
   .subhead, .calc { min-width: 0; }
   /* แถวยอดรวมท้ายตาราง — สูงเท่าแถวอื่นและคงสีพื้นเข้มไว้ */
   .order-total-row td { height: 24px; color: white !important; background: #2f241f !important; border-color: #52443c; font-size: 8px; }
