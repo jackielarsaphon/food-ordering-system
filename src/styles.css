@@ -306,7 +306,11 @@ th.sticky-col { z-index: 4; }
 .admin-filters { margin: 24px 0 15px; display: grid; grid-template-columns: 190px minmax(240px, 1fr) auto; align-items: end; gap: 10px; }
 .last-update { height: 42px; padding: 0 13px; display: flex; align-items: center; gap: 7px; color: #157269; background: #e9f6f3; border-radius: 11px; font-size: 12px; font-weight: 700; }
 .admin-workspace { padding: clamp(12px, 1.35vw, 22px); }
-.admin-table-scroll { width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+/*
+ * ตารางเลื่อนในกรอบของตัวเอง ไม่ใช่เลื่อนทั้งหน้า — จำเป็นเพื่อให้ตรึงหัวตารางได้
+ * เพราะ position: sticky เกาะกับกรอบที่เลื่อน ถ้ากรอบสูงเท่าตารางก็ไม่มีอะไรให้เกาะ
+ */
+.admin-table-scroll { width: 100%; max-height: calc(100vh - 150px); overflow: auto; border: 1px solid var(--line); border-radius: 14px; }
 .summary-print-pages { display: none; }
 .summary-table { width: 100%; min-width: 3040px; table-layout: fixed; }
 .summary-table th { padding: 9px 3px; text-align: center; overflow-wrap: anywhere; font-size: 12px; line-height: 1.15; }
@@ -396,7 +400,15 @@ th.sticky-col { z-index: 4; }
 .summary-department, .summary-department-cell { position: sticky; left: 0; z-index: 2; }
 .summary-units, .summary-unit-name, .subtotal-department-name, .footer-label { position: sticky; left: 170px; z-index: 2; }
 .footer-label { left: 0; }
-.summary-table thead .summary-department, .summary-table thead .summary-units { z-index: 4; }
+
+/*
+ * ตรึงหัวตาราง 2 ชั้นไว้ด้านบน — ชั้นชื่อมื้อเกาะที่ 0 ชั้นย่อยเกาะใต้ลงมา 36px
+ * (36px = ความสูง th จาก base rule ข้อความหัวตารางสั้นพอที่จะไม่ตกบรรทัด)
+ * ช่องมุมซ้ายบนตรึงทั้งแนวตั้งและแนวนอน จึงต้องอยู่ชั้นบนสุด
+ */
+.summary-table thead th { position: sticky; top: 0; z-index: 3; }
+.summary-table thead tr:nth-child(2) th { top: var(--summary-head-row, 36px); }
+.summary-table thead .summary-department, .summary-table thead .summary-units { z-index: 5; }
 .summary-unit-name { background: white; }
 .subtotal-department-name { background: #faeee4; }
 /* เส้นเงาบอกขอบเขตส่วนที่ตรึงไว้ */
@@ -798,7 +810,7 @@ th.sticky-col { z-index: 4; }
   .rice-summary-grid span { font-size: 6pt; }
   .rice-summary-grid strong { font-size: 13pt; }
   .rice-summary-grid small { font-size: 6pt; }
-  .admin-table-scroll { overflow: visible; }
+  .admin-table-scroll { max-height: none; overflow: visible; }
   .admin-workspace > .workspace-heading, .summary-screen-table { display: none !important; }
   .summary-print-pages { display: block !important; }
   .summary-print-page { width: 100%; break-after: page; page-break-after: always; }
@@ -818,9 +830,9 @@ th.sticky-col { z-index: 4; }
   .summary-table tr { break-inside: avoid; page-break-inside: avoid; }
   .summary-table th { height: var(--print-header-height, 5mm); padding: .4mm .5mm; font-size: var(--print-font-size, 6pt) !important; line-height: 1; white-space: normal; }
   .summary-table td { height: var(--print-row-height, 5mm); min-width: 0 !important; padding: .3mm .5mm; font-size: var(--print-font-size, 6pt) !important; line-height: 1; }
-  /* พิมพ์ลงกระดาษไม่มีการเลื่อน ปลดการตรึงคอลัมน์และเงาขอบออก */
+  /* พิมพ์ลงกระดาษไม่มีการเลื่อน ปลดการตรึงคอลัมน์กับหัวตารางและเงาขอบออก */
   .summary-department, .summary-department-cell, .summary-units, .summary-unit-name,
-  .subtotal-department-name, .footer-label { position: static; box-shadow: none; }
+  .subtotal-department-name, .footer-label, .summary-table thead th { position: static; box-shadow: none; }
   .summary-department, .summary-department-cell { width: 8%; min-width: 0 !important; }
   .summary-units, .summary-unit-name { width: 11%; min-width: 0 !important; }
   .summary-status-head { width: 8%; }
