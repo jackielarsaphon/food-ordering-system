@@ -416,13 +416,19 @@ const headcountFromMeals = (mealTotals) => MEAL_PERIODS.reduce(
 )
 const isKitchenSubmitted = (row) => row.status === 'sent' && Boolean(row.submittedAt)
 
+/** ยกแผนกที่ระบุขึ้นเป็นตัวแรก ที่เหลือเรียงตามเดิม — หน้าแผนกอยากเห็นของตัวเองก่อน */
+const orderedDepartments = (firstDepartment = '') => {
+  if (!firstDepartment || !departments.includes(firstDepartment)) return departments
+  return [firstDepartment, ...departments.filter((department) => department !== firstDepartment)]
+}
+
 /**
  * ปั้นข้อมูลให้ KitchenSummaryTable — 1 รายการต่อ 1 แผนก
  *
  * ใช้ทั้งหน้า Admin โรงครัวและหน้าแผนก จึงต้องอยู่ที่เดียวเพื่อไม่ให้เลขสองหน้าไม่ตรงกัน
  * ทีมที่ยังไม่กดส่งโรงครัวถูกล้างยอดเป็นศูนย์ เพราะยอดที่ยังไม่ส่งไม่ใช่ยอดที่โรงครัวได้รับ
  */
-const buildDepartmentSummaries = (dayRows) => departments.map((department) => {
+const buildDepartmentSummaries = (dayRows, firstDepartment = '') => orderedDepartments(firstDepartment).map((department) => {
   const departmentRows = dayRows.filter((row) => row.department === department)
   const submittedDepartmentRows = departmentRows.filter(isKitchenSubmitted)
   return {
@@ -1207,7 +1213,7 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
    */
   const allDayRows = useMemo(() => rows.filter((row) => row.project === selectedProject
     && row.date === selectedDate), [rows, selectedProject, selectedDate])
-  const allSummaries = useMemo(() => buildDepartmentSummaries(allDayRows), [allDayRows])
+  const allSummaries = useMemo(() => buildDepartmentSummaries(allDayRows, department), [allDayRows, department])
   const allSubmittedRows = useMemo(() => allDayRows.filter(isKitchenSubmitted), [allDayRows])
   const allTotals = useMemo(() => summarizeRows(allSubmittedRows), [allSubmittedRows])
 
@@ -1508,7 +1514,7 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
         </div>
 
         {visibleRows.length ? (
-          <section className="department-card">
+          <section className="department-card joined-below">
             <button className="department-head" onClick={() => setCollapsed((current) => !current)}>
               <span className="department-icon"><Building2 size={19} /></span>
               <span className="department-name"><strong>{department}</strong><small>{visibleRows.length} ทีมงาน</small></span>
@@ -1533,13 +1539,13 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
           <div className="empty-state"><Search size={30} /><strong>ไม่พบรายการ</strong><span>ลองเปลี่ยนวันที่หรือคำค้นหา</span></div>
         )}
 
-        <section className="all-departments-summary">
+        <section className={visibleRows.length ? 'all-departments-summary joined-above' : 'all-departments-summary'}>
           <header>
             <span className="all-departments-icon"><UtensilsCrossed size={20} /></span>
             <div>
               <p>KITCHEN ORDER SUMMARY</p>
               <strong>ยอดสรุปข้าวทุกแผนก · {formatDate(selectedDate)}</strong>
-              <small>ตารางเดียวกับที่โรงครัวเห็น · อ่านอย่างเดียว แก้ไขได้แค่ตารางของแผนก {department} ด้านบน</small>
+              <small>ตารางเดียวกับที่โรงครัวเห็น · เริ่มที่แผนก {department} · อ่านอย่างเดียว แก้ไขได้แค่ตารางด้านบน</small>
             </div>
             <span className="all-departments-total">
               <small>รวมทุกแผนก</small>
