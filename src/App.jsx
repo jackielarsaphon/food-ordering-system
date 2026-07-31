@@ -1207,16 +1207,17 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
   }, [session, selectedDate, selectedProject, department])
 
   /**
-   * ยอดสรุปข้าวทุกแผนกของวันที่เลือก — ตารางเดียวกับที่หน้า Admin โรงครัวใช้
+   * ทีมของแผนกอื่นในวันเดียวกัน — ต่อท้ายในตารางเดียวกันแบบอ่านอย่างเดียว
    *
-   * เป็นตัวเลขอ่านอย่างเดียว แผนกนี้แก้ได้แค่ตารางกรอกของตัวเองด้านบน
+   * ใช้ตัวปั้นข้อมูลเดียวกับหน้า Admin โรงครัว ตัวเลขจึงตรงกันทั้งสองหน้า
+   * (ทีมที่ยังไม่กดส่งถูกล้างยอดเป็นศูนย์ เพราะยังไม่ใช่ยอดที่โรงครัวได้รับ)
    */
   const allDayRows = useMemo(() => rows.filter((row) => row.project === selectedProject
     && row.date === selectedDate), [rows, selectedProject, selectedDate])
-  const allSummaries = useMemo(() => buildDepartmentSummaries(allDayRows, department), [allDayRows, department])
-  const allSubmittedRows = useMemo(() => allDayRows.filter(isKitchenSubmitted), [allDayRows])
-  const allTotals = useMemo(() => summarizeRows(allSubmittedRows), [allSubmittedRows])
-
+  const otherSummaries = useMemo(
+    () => buildDepartmentSummaries(allDayRows).filter((item) => item.department !== department),
+    [allDayRows, department],
+  )
   const visibleRows = useMemo(() => {
     const search = query.trim().toLowerCase()
     return rows.filter((row) => row.project === selectedProject
@@ -1227,6 +1228,11 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
 
   const totals = useMemo(() => summarizeRows(visibleRows), [visibleRows])
   const latestSubmittedRow = visibleRows.find((row) => row.status === 'sent' && row.submittedByLid)
+  /** ยอดรวมทุกแผนก = ของแผนกนี้ตามที่เห็นบนจอ + ของแผนกอื่นเฉพาะที่ส่งแล้ว */
+  const combinedRows = useMemo(
+    () => [...visibleRows, ...otherSummaries.flatMap((item) => item.teamRows)],
+    [visibleRows, otherSummaries],
+  )
 
   const applyVisibleMeals = (next) => {
     try {
@@ -1514,7 +1520,7 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
         </div>
 
         {visibleRows.length ? (
-          <section className="department-card joined-below">
+          <section className="department-card">
             <button className="department-head" onClick={() => setCollapsed((current) => !current)}>
               <span className="department-icon"><Building2 size={19} /></span>
               <span className="department-name"><strong>{department}</strong><small>{visibleRows.length} ทีมงาน</small></span>
@@ -1524,6 +1530,9 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
             {!collapsed && (
               <OrderTable
                 rows={visibleRows}
+                otherSummaries={otherSummaries}
+                allRows={combinedRows}
+                department={department}
                 visibleMeals={visibleMeals}
                 deliveryPoints={deliveryPoints}
                 updateRow={updateRow}
@@ -1539,23 +1548,6 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
           <div className="empty-state"><Search size={30} /><strong>ไม่พบรายการ</strong><span>ลองเปลี่ยนวันที่หรือคำค้นหา</span></div>
         )}
 
-        <section className={visibleRows.length ? 'all-departments-summary joined-above' : 'all-departments-summary'}>
-          <header>
-            <span className="all-departments-icon"><UtensilsCrossed size={20} /></span>
-            <div>
-              <p>KITCHEN ORDER SUMMARY</p>
-              <strong>ยอดสรุปข้าวทุกแผนก · {formatDate(selectedDate)}</strong>
-              <small>ตารางเดียวกับที่โรงครัวเห็น · เริ่มที่แผนก {department} · อ่านอย่างเดียว แก้ไขได้แค่ตารางด้านบน</small>
-            </div>
-            <span className="all-departments-total">
-              <small>รวมทุกแผนก</small>
-              <strong>{allTotals.grand.toLocaleString('th-TH')} ชุด</strong>
-            </span>
-          </header>
-          <div className="admin-table-scroll">
-            <KitchenSummaryTable items={allSummaries} totals={allTotals} submittedRows={allSubmittedRows} />
-          </div>
-        </section>
       </section>
       </main>
 
@@ -1620,6 +1612,41 @@ function DepartmentWorkspace({ session, selectedDate, selectedProject, changeDat
 }
 
 /**
+ * แถวของทีมในแผนกอื่น — อยู่ในตารางเดียวกับที่แผนกตัวเองกรอก แต่เป็นข้อความล้วน
+ *
+ * ไม่มี input/select/button แม้แต่ตัวเดียว จึงแก้ของแผนกอื่นไม่ได้
+ * จำนวนคอลัมน์ต้องตรงกับแถวที่กรอกได้เป๊ะ ไม่งั้นตารางจะเบี้ยว
+ */
+function ForeignTeamRow({ row, department, visibleMeals }) {
+  return (
+    <tr className="foreign-team-row">
+      <td className="sticky-col team-cell foreign-team-cell">
+        <strong>{row.team}</strong>
+        <small>{department}</small>
+      </td>
+      {MEAL_PERIODS.flatMap((period) => {
+        const visibility = visibleMeals[period] ? '' : ' meal-hidden'
+        const meal = row[period]
+        return [
+          <td key={`${period}-canteen`} className={`group-start ${period}${visibility}`}>{number(meal.canteen)}</td>,
+          <td key={`${period}-sticky`} className={`packed-cell${visibility}`}>{number(meal.sticky)}</td>,
+          <td key={`${period}-rice`} className={`packed-cell${visibility}`}>{number(meal.rice)}</td>,
+          <td key={`${period}-pack-total`} className={`calc pack-calc${visibility}`}>{packed(meal)}</td>,
+          <td key={`${period}-point`} className={`foreign-point${visibility}`}>{packed(meal) ? (meal.point || 'ยังไม่ระบุ') : '—'}</td>,
+          <td key={`${period}-total`} className={`calc ${period}-calc${visibility}`}>{mealTotal(meal)}</td>,
+        ]
+      })}
+      <td className="calc row-total">{rowTotal(row)}</td>
+      <td className="foreign-note">{row.note || '—'}</td>
+      <td><span className={`status-badge ${row.status}`}>{statusText[row.status]}</span></td>
+      <td className="row-actions-cell foreign-locked" title={`แก้ไขได้เฉพาะแผนกของตัวเอง (${department} เป็นแผนกอื่น)`}>
+        <ShieldCheck size={15} /><span>อ่านอย่างเดียว</span>
+      </td>
+    </tr>
+  )
+}
+
+/**
  * แถวยอดรวมท้ายตารางกรอกออเดอร์ — ใช้ทั้งยอดของแผนกตัวเองและยอดรวมทุกแผนก
  *
  * จำนวนคอลัมน์ต้องตรงกับแถวข้อมูลเป๊ะ รวมถึงคลาส meal-hidden ของมื้อที่ถูกซ่อน
@@ -1657,7 +1684,7 @@ function OrderTotalRow({ className, label, caption, sourceRows, visibleMeals }) 
   )
 }
 
-function OrderTable({ rows, visibleMeals, deliveryPoints, updateRow, updateMeal, removeRow, submitTeam, submittingOrder, submittingTeamId }) {
+function OrderTable({ rows, otherSummaries = [], allRows = [], department, visibleMeals, deliveryPoints, updateRow, updateMeal, removeRow, submitTeam, submittingOrder, submittingTeamId }) {
   return (
     <div className="table-scroll">
       <table className="order-entry-table">
@@ -1751,16 +1778,42 @@ function OrderTable({ rows, visibleMeals, deliveryPoints, updateRow, updateMeal,
               </td>
             </tr>
           ))}
-        </tbody>
-        <tfoot>
+
+          {/* ยอดของแผนกตัวเองอยู่ใน tbody ไม่ใช่ tfoot เพราะต้องมาก่อนแถวของแผนกอื่น */}
           <OrderTotalRow
             className="order-total-row"
-            label="รวมแผนกนี้"
-            caption={`${rows.length.toLocaleString('th-TH')} ทีมงาน`}
+            label={`รวมแผนก ${department}`}
+            caption={`${rows.length.toLocaleString('th-TH')} ทีมงาน · แผนกของคุณ`}
             sourceRows={rows}
             visibleMeals={visibleMeals}
           />
-        </tfoot>
+
+          {otherSummaries.map((item) => (
+            <Fragment key={`foreign-${item.department}`}>
+              {item.teamRows.map((teamRow) => (
+                <ForeignTeamRow key={teamRow.id} row={teamRow} department={item.department} visibleMeals={visibleMeals} />
+              ))}
+              <OrderTotalRow
+                className="order-total-row foreign-total-row"
+                label={`รวม ${item.department}`}
+                caption={`${item.sent.toLocaleString('th-TH')}/${item.teams.toLocaleString('th-TH')} ทีมส่งแล้ว`}
+                sourceRows={item.teamRows}
+                visibleMeals={visibleMeals}
+              />
+            </Fragment>
+          ))}
+        </tbody>
+        {otherSummaries.length > 0 && (
+          <tfoot>
+            <OrderTotalRow
+              className="order-total-row order-grand-row"
+              label="รวมทุกแผนก"
+              caption={`${allRows.length.toLocaleString('th-TH')} ทีมงาน จาก ${(otherSummaries.length + 1).toLocaleString('th-TH')} แผนก`}
+              sourceRows={allRows}
+              visibleMeals={visibleMeals}
+            />
+          </tfoot>
+        )}
       </table>
     </div>
   )
